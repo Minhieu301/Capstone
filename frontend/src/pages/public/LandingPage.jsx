@@ -204,7 +204,7 @@ export default function LandingPage() {
         </div>
 
         <div className="landing3-footer-bottom">
-          <span>© 2024 International Legal Assistance for Workers ILAS. Bảo lưu mọi quyền.</span>
+              <span>© 2024 Intelligent Legal Assistant System (ILAS). Bảo lưu mọi quyền.</span>
           <div>
             <a href="#privacy">Chính sách quyền riêng tư</a>
             <a href="#terms">Điều khoản dịch vụ</a>

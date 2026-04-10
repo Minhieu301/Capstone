@@ -134,7 +134,7 @@ public class FeedbackService {
     }
     
     /**
-     * Cập nhật trạng thái feedback (Admin/Editor)
+     * Cập nhật trạng thái feedback (Admin/Moderator)
      */
     public FeedbackDTO updateFeedbackStatus(Integer feedbackId, Feedback.Status status) {
         try {
@@ -158,4 +158,5 @@ public class FeedbackService {
         }
     }
 }
+
 

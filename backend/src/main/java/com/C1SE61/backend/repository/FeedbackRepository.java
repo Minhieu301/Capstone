@@ -32,7 +32,7 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Integer> {
     List<Feedback> findByArticleId(@Param("articleId") Integer articleId);
 
     @Query("SELECT f FROM Feedback f ORDER BY f.createdAt DESC")
-    List<Feedback> findFeedbackByEditor(@Param("editorId") Integer editorId);
+    List<Feedback> findFeedbackByModerator(@Param("moderatorId") Integer moderatorId);
     
     @Query("SELECT f FROM Feedback f ORDER BY f.createdAt DESC")
     List<Feedback> findAllOrderByLatest();
@@ -44,3 +44,4 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Integer> {
 
     List<Feedback> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 }
+

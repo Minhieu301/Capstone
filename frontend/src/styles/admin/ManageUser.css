@@ -256,7 +256,7 @@
   color: #1d4ed8;
 }
 
-.badge-editor {
+.badge-moderator {
   background: #d1fae5;
   color: #047857;
 }
@@ -496,3 +496,4 @@
     align-items: flex-start;
   }
 }
+

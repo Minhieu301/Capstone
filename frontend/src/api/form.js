@@ -285,24 +285,24 @@ export const previewFile = async (fileUrl, fileName) => {
   }
 };
 // ===========================================================
-// 🆕 PHẦN DÀNH RIÊNG CHO EDITOR FORM TEMPLATE (biên tập viên)
+// 🆕 PHẦN DÀNH RIÊNG CHO MODERATOR FORM TEMPLATE (biên tập viên)
 // ===========================================================
 
-// 🟢 Lấy danh sách biểu mẫu của editor
-export const getFormsByEditor = async (editorId) => {
+// 🟢 Lấy danh sách biểu mẫu của moderator
+export const getFormsByModerator = async (moderatorId) => {
   try {
-    const response = await api.get(`/editor/form-templates/${editorId}`);
+    const response = await api.get(`/moderator/form-templates/${moderatorId}`);
     return { data: response.data };
   } catch (error) {
-    console.error("❌ Lỗi getFormsByEditor:", error);
+    console.error("❌ Lỗi getFormsByModerator:", error);
     throw error;
   }
 };
 
 // 🟢 Tạo biểu mẫu mới
-export const createForm = async (editorId, formData) => {
+export const createForm = async (moderatorId, formData) => {
   try {
-    const response = await api.post(`/editor/form-templates/${editorId}`, formData);
+    const response = await api.post(`/moderator/form-templates/${moderatorId}`, formData);
     return { data: response.data };
   } catch (error) {
     console.error("❌ Lỗi createForm:", error);
@@ -313,7 +313,7 @@ export const createForm = async (editorId, formData) => {
 // 🟢 Cập nhật biểu mẫu
 export const updateForm = async (id, formData) => {
   try {
-    const response = await api.put(`/editor/form-templates/${id}`, formData);
+    const response = await api.put(`/moderator/form-templates/${id}`, formData);
     return { data: response.data };
   } catch (error) {
     console.error("❌ Lỗi updateForm:", error);
@@ -324,7 +324,7 @@ export const updateForm = async (id, formData) => {
 // 🟢 Gửi duyệt biểu mẫu
 export const submitForm = async (id) => {
   try {
-    const response = await api.put(`/editor/form-templates/${id}/submit`);
+    const response = await api.put(`/moderator/form-templates/${id}/submit`);
     return { data: response.data };
   } catch (error) {
     console.error("❌ Lỗi submitForm:", error);
@@ -335,7 +335,7 @@ export const submitForm = async (id) => {
 // 🟢 Xóa biểu mẫu
 export const deleteForm = async (id) => {
   try {
-    await api.delete(`/editor/form-templates/${id}`);
+    await api.delete(`/moderator/form-templates/${id}`);
 
     return true;
   } catch (error) {
@@ -345,12 +345,12 @@ export const deleteForm = async (id) => {
 };
 
 // 🟢 Upload file đính kèm
-export const uploadFormFile = async (editorId, file) => {
+export const uploadFormFile = async (moderatorId, file) => {
   try {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await api.post(`/editor/form-templates/${editorId}/upload`, formData, {
+    const response = await api.post(`/moderator/form-templates/${moderatorId}/upload`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
 
@@ -360,6 +360,7 @@ export const uploadFormFile = async (editorId, file) => {
     throw error;
   }
 };
+
 
 
 

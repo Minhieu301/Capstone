@@ -1,7 +1,7 @@
 // Laws.jsx - Quản lý Văn bản Pháp luật & Nội dung Đơn giản hóa
 import React, { useEffect, useState } from 'react';
 import api from '../../api/api';
-import { editorLawManagementAPI } from '../../api/law';
+import { moderatorLawManagementAPI } from '../../api/law';
 import { Plus, Eye, Edit, Trash2, FileText, Check, X, Clock, BookOpen } from 'lucide-react';
 import '../../styles/admin/laws.css';
 import '../../styles/admin/simplified.css';
@@ -52,7 +52,7 @@ export default function Laws({ hideSimplifiedManagement = false }) {
       setLoadingLaws(true);
       setLawError(null);
       try {
-        const res = await api.get('/editor/laws', { params: { page: 0, size: 50 } });
+        const res = await api.get('/moderator/laws', { params: { page: 0, size: 50 } });
         const content = res?.data?.data?.content || [];
         const mapped = content.map(mapLawDto);
         setLaws(mapped);
@@ -73,7 +73,7 @@ export default function Laws({ hideSimplifiedManagement = false }) {
         setLoadingChapters(true);
         setChapterError(null);
         try {
-          const res = await api.get('/editor/chapters', { params: { page: 0, size: 2000 } });
+          const res = await api.get('/moderator/chapters', { params: { page: 0, size: 2000 } });
           const content = res?.data?.data?.content || [];
           setChapters(content);
         } catch (e) {
@@ -93,7 +93,7 @@ export default function Laws({ hideSimplifiedManagement = false }) {
         setLoadingArticles(true);
         setArticleError(null);
         try {
-          const res = await api.get('/editor/articles', { params: { page: 0, size: 2000 } });
+          const res = await api.get('/moderator/articles', { params: { page: 0, size: 2000 } });
           const content = res?.data?.data?.content || [];
           setArticles(content);
         } catch (e) {
@@ -247,14 +247,14 @@ export default function Laws({ hideSimplifiedManagement = false }) {
     setLoadingSimplified(true);
     setSimplifiedError(null);
     try {
-      const res = await api.get('/editor/simplified-management', {
+      const res = await api.get('/moderator/simplified-management', {
         params: { status: statusKey.toUpperCase(), page: 0, size: 50 }
       });
       const content = res?.data?.data?.content || [];
       const mapped = content.map((item) => ({
         id: item.id,
         title: item.title || item.contentSimplified?.slice(0, 80) || `Bài ${item.id}`,
-        author: item.editorName || 'Chưa rõ',
+        author: item.moderatorName || 'Chưa rõ',
         category: item.category || 'Khác',
         submittedAt: item.createdAt || '',
         type: 'Nội dung đơn giản hóa',
@@ -277,7 +277,7 @@ export default function Laws({ hideSimplifiedManagement = false }) {
     const item = simplifiedItems.pending.find((i) => i.id === id);
     if (!item || !window.confirm(`Bạn có chắc chắn muốn duyệt "${item.title}"?`)) return;
     try {
-      await api.put(`/editor/simplified-management/${id}/approve`);
+      await api.put(`/moderator/simplified-management/${id}/approve`);
       setSimplifiedItems((prev) => ({
         pending: prev.pending.filter((i) => i.id !== id),
         approved: [...prev.approved, { ...item, status: 'APPROVED', approvedAt: new Date().toLocaleString('vi-VN') }],
@@ -295,7 +295,7 @@ export default function Laws({ hideSimplifiedManagement = false }) {
     const reason = window.prompt(`Lý do từ chối "${item.title}":`);
     if (!reason) return;
     try {
-      await api.put(`/editor/simplified-management/${id}/reject`);
+      await api.put(`/moderator/simplified-management/${id}/reject`);
       setSimplifiedItems((prev) => ({
         pending: prev.pending.filter((i) => i.id !== id),
         approved: prev.approved,
@@ -539,11 +539,11 @@ export default function Laws({ hideSimplifiedManagement = false }) {
       try {
         if (modal.mode === 'edit') {
           const payload = { title: modal.titleInput };
-          const res = await editorLawManagementAPI.update(modal.item.id, payload);
+          const res = await moderatorLawManagementAPI.update(modal.item.id, payload);
           const updated = mapLawDto(res?.data || modal.item);
           setLaws(laws.map((l) => (l.id === modal.item.id ? updated : l)));
         } else if (modal.mode === 'delete') {
-          await editorLawManagementAPI.remove(modal.item.id);
+          await moderatorLawManagementAPI.remove(modal.item.id);
           setLaws(laws.filter((l) => l.id !== modal.item.id));
         }
         closeModal();
@@ -1365,3 +1365,4 @@ export default function Laws({ hideSimplifiedManagement = false }) {
     </div>
   );
 }
+

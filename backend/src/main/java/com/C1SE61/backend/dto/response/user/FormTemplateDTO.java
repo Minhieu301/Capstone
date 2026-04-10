@@ -16,8 +16,8 @@ public class FormTemplateDTO {
     private String status;
     private Integer relatedArticleId;
     private String relatedArticleTitle;
-    private Integer editorId;
-    private String editorName;
+    private Integer moderatorId;
+    private String moderatorName;
     private LocalDateTime createdAt;
 
     // ===== Constructors =====
@@ -25,7 +25,7 @@ public class FormTemplateDTO {
 
     public FormTemplateDTO(Integer templateId, String title, String description, String category,
                            String fileUrl, String status, Integer relatedArticleId,
-                           String relatedArticleTitle, Integer editorId, String editorName,
+                           String relatedArticleTitle, Integer moderatorId, String moderatorName,
                            LocalDateTime createdAt) {
         this.templateId = templateId;
         this.title = title;
@@ -39,8 +39,8 @@ public class FormTemplateDTO {
         this.status = status;
         this.relatedArticleId = relatedArticleId;
         this.relatedArticleTitle = relatedArticleTitle;
-        this.editorId = editorId;
-        this.editorName = editorName;
+        this.moderatorId = moderatorId;
+        this.moderatorName = moderatorName;
         this.createdAt = createdAt;
     }
 
@@ -81,12 +81,13 @@ public class FormTemplateDTO {
     public String getRelatedArticleTitle() { return relatedArticleTitle; }
     public void setRelatedArticleTitle(String relatedArticleTitle) { this.relatedArticleTitle = relatedArticleTitle; }
 
-    public Integer getEditorId() { return editorId; }
-    public void setEditorId(Integer editorId) { this.editorId = editorId; }
+    public Integer getModeratorId() { return moderatorId; }
+    public void setModeratorId(Integer moderatorId) { this.moderatorId = moderatorId; }
 
-    public String getEditorName() { return editorName; }
-    public void setEditorName(String editorName) { this.editorName = editorName; }
+    public String getModeratorName() { return moderatorName; }
+    public void setModeratorName(String moderatorName) { this.moderatorName = moderatorName; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }
+

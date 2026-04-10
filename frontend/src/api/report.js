@@ -1,4 +1,4 @@
-﻿import api from "./api";
+import api from "./api";
 
 export const reportAPI = {
   getReport: async (range = "week", reportType = "all") => {

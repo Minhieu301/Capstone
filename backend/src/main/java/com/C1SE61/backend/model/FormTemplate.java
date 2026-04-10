@@ -40,8 +40,8 @@ public class FormTemplate {
     private Article relatedArticle;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "editor_id", nullable = false)
-    private UserAccount editor;
+    @JoinColumn(name = "moderator_id", nullable = false)
+    private UserAccount moderator;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -54,3 +54,4 @@ public class FormTemplate {
         REJECTED
     }
 }
+

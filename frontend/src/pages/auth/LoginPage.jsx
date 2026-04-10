@@ -78,7 +78,7 @@ export default function Login() {
 
         if (role === "ADMIN") {
           navigate("/admin/dashboard");
-        } else if (role === "EDITOR" || role === "MODERATOR") {
+        } else if (role === "MODERATOR" || role === "MODERATOR") {
           navigate("/moderator/dashboard");
         } else {
           navigate("/user/dashboard");
@@ -216,7 +216,7 @@ export default function Login() {
       </main>
 
       <footer className="login3-footer" id="contact">
-        <span>&copy; 2024 International Legal Assistance for Workers (ILAS). Bảo lưu mọi quyền.</span>
+              <span>&copy; 2024 Intelligent Legal Assistant System (ILAS). Bảo lưu mọi quyền.</span>
         <div>
           <a href="#privacy">Chính sách quyền riêng tư</a>
           <a href="#terms">Điều khoản dịch vụ</a>
@@ -227,3 +227,4 @@ export default function Login() {
     </div>
   );
 }
+

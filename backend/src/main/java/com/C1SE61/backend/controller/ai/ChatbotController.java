@@ -21,7 +21,15 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/chatbot")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"}, allowCredentials = "true", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.OPTIONS})
+@CrossOrigin(originPatterns = {
+    "http://localhost:*",
+    "http://127.0.0.1:*"
+}, allowCredentials = "true", allowedHeaders = "*", methods = {
+    RequestMethod.GET,
+    RequestMethod.POST,
+    RequestMethod.DELETE,
+    RequestMethod.OPTIONS
+})
 public class ChatbotController {
 
     private final ChatbotService chatbotService;
@@ -47,6 +55,19 @@ public class ChatbotController {
     @GetMapping("/history/{userId}")
     public ResponseEntity<List<ChatHistoryDTO>> getHistory(@PathVariable Integer userId) {
         return ResponseEntity.ok(chatbotService.getHistory(userId));
+    }
+
+    @DeleteMapping("/history/{userId}")
+    public ResponseEntity<?> clearHistory(@PathVariable Integer userId) {
+        chatbotService.clearHistory(userId);
+        return ResponseEntity.ok(Map.of("message", "Chat history deleted"));
+    }
+
+    // Fallback endpoint for environments that block DELETE requests.
+    @PostMapping("/history/{userId}/clear")
+    public ResponseEntity<?> clearHistoryPost(@PathVariable Integer userId) {
+        chatbotService.clearHistory(userId);
+        return ResponseEntity.ok(Map.of("message", "Chat history deleted"));
     }
 
 

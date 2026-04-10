@@ -1,5 +1,5 @@
 /* ==============================
-🌐 BASE HEADER (User + Editor)
+🌐 BASE HEADER (User + Moderator)
 ============================== */
 .lp-header {
   position: sticky;
@@ -231,24 +231,24 @@
 }
 
 /* ==============================
-🌈 EDITOR HEADER (ĐỒNG MÀU USER)
+🌈 MODERATOR HEADER (ĐỒNG MÀU USER)
 ============================== */
-.editor-header {
+.moderator-header {
   background: #ffffff;
   border-bottom: 1px solid #e0e0e0;
   box-shadow: 0 2px 10px rgba(33, 150, 243, 0.08);
 }
 
-.editor-header .lp-nav a {
+.moderator-header .lp-nav a {
   color: #2c3e50;
 }
 
-.editor-header .lp-nav a:hover {
+.moderator-header .lp-nav a:hover {
   background: linear-gradient(135deg, #e3f2fd 0%, #d0f5e0 100%);
   color: #1976d2;
 }
 
-.editor-header .lp-nav a.active {
+.moderator-header .lp-nav a.active {
   background: linear-gradient(135deg, #2196f3 0%, #22b573 100%);
   color: white;
 }
@@ -311,3 +311,4 @@
     font-size: 14px;
   }
 }
+

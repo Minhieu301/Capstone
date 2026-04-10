@@ -1,4 +1,4 @@
-﻿package com.C1SE61.backend.service.admin;
+package com.C1SE61.backend.service.admin;
 
 import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Document;

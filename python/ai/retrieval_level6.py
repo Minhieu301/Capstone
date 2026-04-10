@@ -120,10 +120,9 @@ def load_source(name: str):
 
 
 ARTICLES = load_source("articles/chunks") or load_source("articles")
-FAQ = load_source("faq")
 SIMPLIFIED = load_source("simplified")
 
-SOURCES = [ARTICLES, FAQ, SIMPLIFIED]
+SOURCES = [ARTICLES, SIMPLIFIED]
 
 
 def get_source_by_name(name: str):
@@ -194,7 +193,6 @@ def subject_score(text, subject):
 SOURCE_PRIORITY = {
     "articles/chunks": 0.12,
     "articles": 0.10,
-    "faq": 0.05,
     "simplified": 0.02
 }
 
@@ -245,7 +243,6 @@ def retrieve_multi_source(query: str, source_filter="all"):
     # FE → internal mapping
     mapping = {
         "laws": "articles/chunks",
-        "faqs": "faq",
         "content": "simplified",
         "all": "all"
     }

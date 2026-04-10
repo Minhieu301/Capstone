@@ -41,7 +41,7 @@ public class FeedbackController {
     }
 
     /**
-     * Lấy tất cả feedback với phân trang (Admin/Editor)
+     * Lấy tất cả feedback với phân trang (Admin/Moderator)
      * GET /api/feedback?page={page}&size={size}
      */
     @GetMapping
@@ -58,7 +58,7 @@ public class FeedbackController {
     }
 
     /**
-     * Lấy feedback theo trạng thái (Admin/Editor)
+     * Lấy feedback theo trạng thái (Admin/Moderator)
      * GET /api/feedback/status/{status}?page={page}&size={size}
      */
     @GetMapping("/status/{status}")
@@ -99,7 +99,7 @@ public class FeedbackController {
     }
 
     /**
-     * Cập nhật trạng thái feedback (Admin/Editor)
+     * Cập nhật trạng thái feedback (Admin/Moderator)
      * PUT /api/feedback/{feedbackId}/status
      */
     @PutMapping("/{feedbackId}/status")
@@ -123,4 +123,5 @@ public class FeedbackController {
         }
     }
 }
+
 

@@ -6,50 +6,149 @@ import UserSidebar from "../user/UserSidebar";
 import "../../styles/user/DashboardPage.css";
 import "../../styles/chatbot/ChatHistory.css";
 
+function shortTitle(question = "") {
+  const text = (question || "Cuộc trò chuyện mới").trim();
+  if (text.length <= 36) return text;
+  return `${text.slice(0, 36)}...`;
+}
+
+function toDateValue(value) {
+  return value ? new Date(value).getTime() || 0 : 0;
+}
+
+function formatChipDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("vi-VN");
+}
+
+function formatMessageTime(value) {
+  if (!value) return "Vừa gửi";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Vừa gửi";
+  return date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function ChatHistoryPage() {
-  const [groupedHistory, setGroupedHistory] = useState({});
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [conversations, setConversations] = useState({});
+  const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
   const userId = localStorage.getItem("userId");
   const scrollRef = useRef(null);
+  const draftConversationRef = useRef(null);
   const { user } = useAuth();
 
   const displayName = user?.fullName || user?.username || "Người dùng";
 
-  const historyDates = useMemo(() => Object.keys(groupedHistory), [groupedHistory]);
-  const selectedLogs = selectedDate ? groupedHistory[selectedDate] || [] : [];
+  const conversationList = useMemo(() => {
+    return Object.values(conversations)
+      .sort((a, b) => toDateValue(b.updatedAt) - toDateValue(a.updatedAt));
+  }, [conversations]);
+
+  const selectedLogs = selectedConversationId
+    ? conversations[selectedConversationId]?.logs || []
+    : [];
+
   const suggestionChips = [
     "Mức trợ cấp thôi việc là bao nhiêu?",
     "Thủ tục khiếu nại tại ILAS",
     "Mẫu đơn kiện sai quy trình",
   ];
 
+  const createConversationId = () => `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const getDeletedConversationStorageKey = () => `chat-deleted-conversations-${userId || "guest"}`;
+
+  const getDeletedConversationIds = () => {
+    try {
+      const raw = localStorage.getItem(getDeletedConversationStorageKey());
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveDeletedConversationIds = (ids) => {
+    localStorage.setItem(getDeletedConversationStorageKey(), JSON.stringify(ids));
+  };
+
   const loadHistory = async () => {
     if (!userId) return;
 
     try {
       const logs = await getChatHistory(userId);
-      const grouped = {};
+      const next = {};
+      const deletedConversationIds = new Set(getDeletedConversationIds());
 
       logs.forEach((l) => {
-        const time = l.createdAt || l.created_at;
-        if (!time) return;
+        const createdAt = l.createdAt || l.created_at || new Date().toISOString();
+        const fallbackLegacyGroup = `legacy-${new Date(createdAt).toLocaleDateString("vi-VN")}`;
+        const conversationId = (l.conversationId || "").trim() || fallbackLegacyGroup;
 
-        const date = new Date(time).toLocaleDateString("vi-VN");
-        if (!grouped[date]) grouped[date] = [];
-        grouped[date].push(l);
+        if (deletedConversationIds.has(conversationId)) {
+          return;
+        }
+
+        if (!next[conversationId]) {
+          next[conversationId] = {
+            id: conversationId,
+            title: shortTitle(l.question),
+            createdAt,
+            updatedAt: createdAt,
+            logs: [],
+          };
+        }
+
+        next[conversationId].logs.push(l);
+        if (toDateValue(createdAt) > toDateValue(next[conversationId].updatedAt)) {
+          next[conversationId].updatedAt = createdAt;
+        }
       });
 
-      setGroupedHistory(grouped);
+      Object.values(next).forEach((c) => {
+        c.logs.sort((a, b) => toDateValue(a.createdAt || a.created_at) - toDateValue(b.createdAt || b.created_at));
+      });
 
-      const dates = Object.keys(grouped);
-      if (dates.length > 0) {
-        setSelectedDate((prev) => prev || dates[dates.length - 1]);
-      }
+      setConversations(next);
+      setSelectedConversationId((prev) => {
+        if (prev && next[prev]) return prev;
+        const latest = Object.values(next).sort((a, b) => toDateValue(b.updatedAt) - toDateValue(a.updatedAt))[0];
+        return latest ? latest.id : null;
+      });
     } catch (e) {
       console.error("Lỗi load chat history:", e);
+    }
+  };
+
+  const handleDeleteConversation = (conversationId) => {
+    if (!conversationId || loading) return;
+
+    const confirmed = window.confirm("Bạn có chắc muốn xóa cuộc trò chuyện này không?");
+    if (!confirmed) return;
+
+    const deletedIds = getDeletedConversationIds();
+    if (!deletedIds.includes(conversationId)) {
+      saveDeletedConversationIds([...deletedIds, conversationId]);
+    }
+
+    setConversations((prev) => {
+      const next = { ...prev };
+      delete next[conversationId];
+      return next;
+    });
+
+    setSelectedConversationId((prev) => {
+      if (prev !== conversationId) return prev;
+      const remaining = conversationList.filter((c) => c.id !== conversationId);
+      return remaining[0]?.id || null;
+    });
+
+    if (draftConversationRef.current === conversationId) {
+      draftConversationRef.current = null;
     }
   };
 
@@ -61,18 +160,67 @@ export default function ChatHistoryPage() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [selectedDate, groupedHistory]);
+  }, [selectedConversationId, conversations]);
 
   const handleSend = async () => {
     if (!input.trim() || loading || !userId) return;
 
-    const question = input;
+    const question = input.trim();
     setInput("");
     setLoading(true);
 
     try {
-      await sendChatMessage(userId, question, true);
-      await loadHistory();
+      let conversationId = selectedConversationId;
+
+      if (!conversationId) {
+        conversationId = createConversationId();
+        draftConversationRef.current = conversationId;
+        const nowIso = new Date().toISOString();
+        setConversations((prev) => ({
+          ...prev,
+          [conversationId]: {
+            id: conversationId,
+            title: shortTitle(question),
+            createdAt: nowIso,
+            updatedAt: nowIso,
+            logs: [],
+          },
+        }));
+        setSelectedConversationId(conversationId);
+      }
+
+      const data = await sendChatMessage(userId, question, true, conversationId);
+      const nowIso = new Date().toISOString();
+      const newLog = {
+        conversationId,
+        question,
+        answer: data?.answer || "⚠️ AI chưa trả về nội dung.",
+        createdAt: nowIso,
+      };
+
+      setConversations((prev) => {
+        const existing = prev[conversationId] || {
+          id: conversationId,
+          title: shortTitle(question),
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          logs: [],
+        };
+
+        return {
+          ...prev,
+          [conversationId]: {
+            ...existing,
+            title: existing.logs.length === 0 ? shortTitle(question) : existing.title,
+            updatedAt: nowIso,
+            logs: [...existing.logs, newLog],
+          },
+        };
+      });
+
+      if (draftConversationRef.current === conversationId) {
+        draftConversationRef.current = null;
+      }
     } catch {
       alert("Không thể gửi câu hỏi");
     } finally {
@@ -81,7 +229,22 @@ export default function ChatHistoryPage() {
   };
 
   const handleNewChat = () => {
-    setSelectedDate(null);
+    const conversationId = createConversationId();
+    const nowIso = new Date().toISOString();
+    draftConversationRef.current = conversationId;
+
+    setConversations((prev) => ({
+      ...prev,
+      [conversationId]: {
+        id: conversationId,
+        title: "Cuộc trò chuyện mới",
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        logs: [],
+      },
+    }));
+
+    setSelectedConversationId(conversationId);
     setInput("");
   };
 
@@ -106,18 +269,40 @@ export default function ChatHistoryPage() {
 
         <div className="chatassist-content">
           <section className="chatassist-history-bar">
-            <button type="button" className={`chatassist-history-chip ${selectedDate === null ? "active" : ""}`} onClick={handleNewChat}>
+            <button type="button" className="chatassist-history-chip" onClick={handleNewChat}>
               New Chat
             </button>
-            {historyDates.map((date) => (
-              <button
-                key={date}
-                type="button"
-                className={`chatassist-history-chip ${selectedDate === date ? "active" : ""}`}
-                onClick={() => setSelectedDate(date)}
+            {conversationList.map((conv) => (
+              <div
+                key={conv.id}
+                className={`chatassist-history-chip-wrap ${selectedConversationId === conv.id ? "active" : ""}`}
               >
-                {date}
-              </button>
+                <button
+                  type="button"
+                  className={`chatassist-history-chip ${selectedConversationId === conv.id ? "active" : ""}`}
+                  onClick={() => {
+                    draftConversationRef.current = null;
+                    setSelectedConversationId(conv.id);
+                  }}
+                  title={conv.title}
+                >
+                  {conv.title}
+                  {conv.updatedAt ? ` • ${formatChipDate(conv.updatedAt)}` : ""}
+                </button>
+
+                <button
+                  type="button"
+                  className="chatassist-history-chip-delete"
+                  aria-label={`Xóa cuộc trò chuyện ${conv.title}`}
+                  title="Xóa cuộc trò chuyện"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteConversation(conv.id);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </section>
 
@@ -133,32 +318,21 @@ export default function ChatHistoryPage() {
 
             {selectedLogs.length === 0 && (
               <div className="chatassist-empty-state">
-                Chưa có lịch sử chat nào. Hãy bắt đầu cuộc trò chuyện mới.
+                Chưa có tin nhắn trong cuộc trò chuyện này. Hãy bắt đầu bằng một câu hỏi mới.
               </div>
             )}
 
             {selectedLogs.map((chatLog, index) => (
-              <div key={`${selectedDate || "chat"}-${index}`} className="chatassist-block">
+              <div key={`${selectedConversationId || "chat"}-${index}`} className="chatassist-block">
                 <article className="chatassist-message user">
                   <p>{chatLog.question}</p>
                 </article>
-                <div className="chatassist-timestamp">Vừa gửi</div>
+                <div className="chatassist-timestamp">{formatMessageTime(chatLog.createdAt || chatLog.created_at)}</div>
 
                 <div className="chatassist-bot-label">LEGALASSIST AI</div>
                 <article className="chatassist-message bot">
                   <div className="chatassist-markdown">
                     <ReactMarkdown>{chatLog.answer}</ReactMarkdown>
-                  </div>
-
-                  <div className="chatassist-reference-card">
-                    <div className="chatassist-reference-title">Labor Code 2019</div>
-                    <p>
-                      Điều 36, quyền đơn phương chấm dứt hợp đồng lao động của người sử dụng lao động.
-                      Người sử dụng lao động phải báo trước ít nhất 30 ngày đối với hợp đồng xác định thời hạn 12-36 tháng.
-                    </p>
-                    <button type="button" className="chatassist-reference-link">
-                      Xem toàn bộ văn bản
-                    </button>
                   </div>
                 </article>
               </div>

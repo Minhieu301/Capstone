@@ -1,4 +1,4 @@
-﻿package com.C1SE61.backend.model;
+package com.C1SE61.backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;

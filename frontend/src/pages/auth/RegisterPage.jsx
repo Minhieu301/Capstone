@@ -157,7 +157,7 @@ export default function Register() {
       
       if (roleUpper === "ADMIN") {
         navigate("/admin/dashboard");
-      } else if (roleUpper === "EDITOR" || roleUpper === "MODERATOR") {
+      } else if (roleUpper === "MODERATOR" || roleUpper === "MODERATOR") {
         navigate("/moderator/dashboard");
       } else {
         navigate("/user/dashboard");
@@ -352,7 +352,7 @@ export default function Register() {
       </main>
 
       <footer className="register-v2-footer">
-        <span>© 2024 International Legal Assistance for Workers (ILAS). Bảo lưu mọi quyền.</span>
+              <span>© 2024 Intelligent Legal Assistant System (ILAS). Bảo lưu mọi quyền.</span>
         <div className="register-v2-footer-links">
           <a href="#privacy">Chính sách quyền riêng tư</a>
           <a href="#terms">Điều khoản dịch vụ</a>
@@ -363,3 +363,4 @@ export default function Register() {
     </div>
   );
 }
+

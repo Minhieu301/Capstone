@@ -28,7 +28,7 @@ public class TrackController {
 
     /**
      * Ghi nhận lượt xem trang (page view).
-     * Chỉ đếm guest hoặc user (roleId = 3). Bỏ qua admin/editor.
+     * Chỉ đếm guest hoặc user (roleId = 3). Bỏ qua admin/moderator.
      */
     @PostMapping("/page-view")
     public ResponseEntity<ApiResponse<String>> trackPageView(
@@ -42,8 +42,8 @@ public class TrackController {
                 if (user.getRole() != null && user.getRole().getRoleId() != null) {
                     int roleId = user.getRole().getRoleId();
                     if (roleId == 1 || roleId == 2) {
-                        // admin hoặc editor: không ghi log
-                        return ResponseEntity.ok(ApiResponse.success("Skipped (admin/editor)", null));
+                        // admin hoặc moderator: không ghi log
+                        return ResponseEntity.ok(ApiResponse.success("Skipped (admin/moderator)", null));
                     }
                 }
             }
@@ -100,4 +100,5 @@ public class TrackController {
         }
     }
 }
+
 

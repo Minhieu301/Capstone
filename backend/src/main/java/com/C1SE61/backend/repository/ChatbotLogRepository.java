@@ -12,6 +12,7 @@ import java.util.List;
 public interface ChatbotLogRepository extends JpaRepository<ChatbotLog, Integer> {
 
     List<ChatbotLog> findAllByUser_UserIdOrderByCreatedAtAsc(Integer userId);
+    void deleteAllByUser_UserId(Integer userId);
 
     @Query("""
         SELECT new com.C1SE61.backend.dto.response.ai.TopQuestionResponse(

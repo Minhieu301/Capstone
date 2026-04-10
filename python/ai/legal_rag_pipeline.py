@@ -1,15 +1,36 @@
-﻿# ai/legal_rag_pipeline.py
+# ai/legal_rag_pipeline.py
 # -------------------------------------------------------
 # LEGAL RAG LEVEL 8 – FULL ARTICLE CONTEXT + HYBRID MODE
 # -------------------------------------------------------
 
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env from project root
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 from ai.retrieval_level6 import retrieve_multi_source
 from ai.context_builder import build_context
-from ai.groq_service import guarded_completion, fallback_general_answer
 import time
+
+# DYNAMIC MODEL SELECTION
+AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower().strip()
+
+if AI_PROVIDER == "groq":
+    from ai.groq_service import guarded_completion, fallback_general_answer
+    _ACTIVE_PROVIDER = "Groq"
+else:
+    # Default to gemini
+    from ai.gemini_service import guarded_completion, fallback_general_answer
+    _ACTIVE_PROVIDER = "Gemini"
 
 
 def answer_legal_question(query: str, settings: dict = None):
+    if settings is None:
+        settings = {}
+
     # 0.5) Check enabled
     if settings.get("enabled") is False:
         return {
@@ -23,9 +44,6 @@ def answer_legal_question(query: str, settings: dict = None):
     LEGAL RAG PIPELINE – LEVEL 8 (Full Article Context + Hybrid Mode)
     + Hỗ trợ Admin Settings (delay, datasource, temperature…)
     """
-
-    if settings is None:
-        settings = {}
 
     # 0) Validate câu hỏi
     if not query or not query.strip():
@@ -58,7 +76,7 @@ def answer_legal_question(query: str, settings: dict = None):
         if not results:
             fb = fallback_general_answer(query)
             return {
-                "answer": fb + "\n\n⚠️ *Ghi chú: Câu trả lời này không dựa trên dữ liệu ILAS (fallback Groq).*",
+                "answer": fb + "\n\n⚠️ *Ghi chú: Câu trả lời này không dựa trên dữ liệu ILAS (fallback Gemini).*",
                 "context_used": None,
                 "source": "fallback",
                 "fallback": True
@@ -70,7 +88,7 @@ def answer_legal_question(query: str, settings: dict = None):
         if not context or len(context.strip()) == 0:
             fb = fallback_general_answer(query)
             return {
-                "answer": fb + "\n\n⚠️ *Không tìm thấy quy định phù hợp trong dữ liệu ILAS (fallback Groq).*",
+                "answer": fb + "\n\n⚠️ *Không tìm thấy quy định phù hợp trong dữ liệu ILAS (fallback Gemini).*",
                 "context_used": None,
                 "source": "fallback",
                 "fallback": True
@@ -88,8 +106,32 @@ def answer_legal_question(query: str, settings: dict = None):
                 max_tokens=int(max_tokens)
             )
 
+            # If Gemini returns a known failure message, fallback to Groq automatically.
+            if AI_PROVIDER == "gemini" and isinstance(answer, str):
+                fail_markers = [
+                    "AI không trả về",
+                    "AI trả về kết quả rỗng",
+                    "Hệ thống AI Gemini đang lỗi",
+                    "Gemini fallback failed",
+                    "JSON error",
+                    "GEMINI_API_KEY"
+                ]
+                if any(marker in answer for marker in fail_markers):
+                    try:
+                        from ai.groq_service import guarded_completion as groq_guarded_completion
+                        groq_answer = groq_guarded_completion(
+                            context=context,
+                            question=query,
+                            temperature=float(temperature),
+                            max_tokens=int(max_tokens)
+                        )
+                        if isinstance(groq_answer, str) and groq_answer.strip():
+                            answer = groq_answer + "\n\n⚠️ *Ghi chú: Gemini lỗi, hệ thống đã tự chuyển sang Groq.*"
+                    except Exception as fallback_err:
+                        print("❌ GROQ FALLBACK ERROR:", repr(fallback_err))
+
         except Exception as e:
-            print("❌ GROQ COMPLETION ERROR:", repr(e))
+            print(f"❌ {_ACTIVE_PROVIDER.upper()} COMPLETION ERROR:", repr(e))
             return {
                 "answer": "⚠️ Hệ thống AI gặp lỗi khi sinh câu trả lời. Vui lòng thử lại.",
                 "context_used": None,

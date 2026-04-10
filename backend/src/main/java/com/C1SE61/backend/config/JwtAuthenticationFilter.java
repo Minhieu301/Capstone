@@ -70,7 +70,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 var user = userOpt.get();
 
                 String roleName = user.getRole() != null ? user.getRole().getRoleName() : "User";
-                // Normalize role name: convert to "Admin", "Editor", "User" format
+                // Normalize role name: convert to "Admin", "Moderator", "User" format
                 String normalizedRole = normalizeRoleName(roleName);
                 var authorities = List.of(new SimpleGrantedAuthority(normalizedRole));
 
@@ -104,3 +104,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return normalized;
     }
 }
+

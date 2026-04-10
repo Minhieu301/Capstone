@@ -42,6 +42,9 @@ public class ChatbotLog {
     @Column(name = "source_role", length = 20)
     private String sourceRole;
 
+    @Column(name = "conversation_id", length = 64)
+    private String conversationId;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

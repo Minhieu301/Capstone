@@ -17,17 +17,17 @@ public interface SimplifiedArticleRepository extends JpaRepository<SimplifiedArt
 
     Page<SimplifiedArticle> findByStatus(SimplifiedArticle.Status status, Pageable pageable);
 
-    // Lấy tất cả simplified articles theo editor ID
-    List<SimplifiedArticle> findByEditor_UserId(Integer editorId);
+    // Lấy tất cả simplified articles theo moderator ID
+    List<SimplifiedArticle> findByModerator_UserId(Integer moderatorId);
 
-       // Lấy simplified articles theo editor ID và status
-       List<SimplifiedArticle> findByEditor_UserIdAndStatus(Integer editorId, SimplifiedArticle.Status status);
+       // Lấy simplified articles theo moderator ID và status
+       List<SimplifiedArticle> findByModerator_UserIdAndStatus(Integer moderatorId, SimplifiedArticle.Status status);
 
     // Lấy tất cả simplified articles theo article ID
     List<SimplifiedArticle> findByArticle_ArticleId(Integer articleId);
 
-    // Lấy simplified article theo article ID và editor ID
-    Optional<SimplifiedArticle> findByArticle_ArticleIdAndEditor_UserId(Integer articleId, Integer editorId);
+    // Lấy simplified article theo article ID và moderator ID
+    Optional<SimplifiedArticle> findByArticle_ArticleIdAndModerator_UserId(Integer articleId, Integer moderatorId);
 
        // Lấy simplified articles theo article ID và status
        List<SimplifiedArticle> findByArticle_ArticleIdAndStatus(Integer articleId, SimplifiedArticle.Status status);
@@ -41,7 +41,7 @@ public interface SimplifiedArticleRepository extends JpaRepository<SimplifiedArt
     // Tìm simplified article đã được APPROVED theo article ID
     @Query("SELECT s FROM SimplifiedArticle s " +
            "LEFT JOIN FETCH s.article " +
-           "LEFT JOIN FETCH s.editor " +
+           "LEFT JOIN FETCH s.moderator " +
            "WHERE s.article.articleId = :articleId " +
            "AND s.status = com.C1SE61.backend.model.SimplifiedArticle.Status.APPROVED")
     Optional<SimplifiedArticle> findApprovedByArticleId(@Param("articleId") Integer articleId);
@@ -67,3 +67,4 @@ public interface SimplifiedArticleRepository extends JpaRepository<SimplifiedArt
 
     List<SimplifiedArticle> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 }
+

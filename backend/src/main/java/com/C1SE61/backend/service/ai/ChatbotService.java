@@ -20,6 +20,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +47,9 @@ public class ChatbotService {
         String question = req.getQuestion();
         boolean saveLog = req.isSaveLog();
         Integer userId = req.getUserId();
+        String conversationId = (req.getConversationId() != null && !req.getConversationId().isBlank())
+            ? req.getConversationId().trim()
+            : "conv-" + UUID.randomUUID();
 
         UserAccount user = (userId != null)
                 ? userRepo.findById(userId).orElse(null)
@@ -151,6 +155,7 @@ public class ChatbotService {
             log.setSourceTitle(firstChunk);
             log.setQuestionClean(normalize(question));
             log.setSourceRole("USER");
+            log.setConversationId(conversationId);
 
             chatbotRepo.save(log);
         }
@@ -187,11 +192,19 @@ public class ChatbotService {
 
         return logs.stream()
                 .map(l -> new ChatHistoryDTO(
+                l.getConversationId(),
                         l.getQuestion(),
                         l.getAnswer(),
                         l.getCreatedAt().toString()
                 ))
                 .toList();
+    }
+
+    // =====================================================
+    // CLEAR CHAT HISTORY BY USER
+    // =====================================================
+    public void clearHistory(Integer userId) {
+        chatbotRepo.deleteAllByUser_UserId(userId);
     }
 
     // =====================================================

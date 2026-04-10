@@ -285,11 +285,11 @@ export const lawAPI = {
   },
 };
 
-// Editor Law Management API
-export const editorLawManagementAPI = {
+// Moderator Law Management API
+export const moderatorLawManagementAPI = {
   list: async (keyword, page = 0, size = 10) => {
     try {
-      const response = await api.get('/editor/laws', {
+      const response = await api.get('/moderator/laws', {
         params: { keyword, page, size }
       });
       return response.data;
@@ -298,44 +298,45 @@ export const editorLawManagementAPI = {
     }
   },
   create: async (payload) => {
-    const response = await api.post('/editor/laws', payload);
+    const response = await api.post('/moderator/laws', payload);
     return response.data;
   },
   update: async (id, payload) => {
-    const response = await api.put(`/editor/laws/${id}`, payload);
+    const response = await api.put(`/moderator/laws/${id}`, payload);
     return response.data;
   },
   remove: async (id) => {
-    const response = await api.delete(`/editor/laws/${id}`);
+    const response = await api.delete(`/moderator/laws/${id}`);
     return response.data;
   }
 };
 
 // Backward compatibility alias
-export const adminLawAPI = editorLawManagementAPI;
+export const adminLawAPI = moderatorLawManagementAPI;
 
-// Editor Simplified Management API
-export const editorSimplifiedManagementAPI = {
+// Moderator Simplified Management API
+export const moderatorSimplifiedManagementAPI = {
   list: async (status = 'PENDING', page = 0, size = 10) => {
-    const response = await api.get('/editor/simplified-management', {
+    const response = await api.get('/moderator/simplified-management', {
       params: { status, page, size }
     });
     return response.data;
   },
   approve: async (id) => {
-    const response = await api.put(`/editor/simplified-management/${id}/approve`);
+    const response = await api.put(`/moderator/simplified-management/${id}/approve`);
     return response.data;
   },
   reject: async (id) => {
-    const response = await api.put(`/editor/simplified-management/${id}/reject`);
+    const response = await api.put(`/moderator/simplified-management/${id}/reject`);
     return response.data;
   }
 };
 
 // Backward compatibility alias
-export const adminSimplifiedAPI = editorSimplifiedManagementAPI;
+export const adminSimplifiedAPI = moderatorSimplifiedManagementAPI;
 
 export default api;
+
 
 
 

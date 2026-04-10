@@ -1,4 +1,4 @@
-# === Java / Spring Boot ===
+﻿# === Java / Spring Boot ===
 target/
 *.class
 *.jar
@@ -32,7 +32,7 @@ __pycache__/
 venv/
 *.sqlite3
 
-# === OS / Editor files ===
+# === OS / Moderator files ===
 .DS_Store
 Thumbs.db
 *.swp
@@ -40,3 +40,4 @@ Thumbs.db
 
 # === VSCode ===
 .vscode/
+

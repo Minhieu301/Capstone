@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import "../../styles/admin/feedback.css";
 
-const API_URL = "http://localhost:8080/api/editor/feedback";
+const API_URL = "http://localhost:8080/api/moderator/feedback";
 
 const sourceFilters = [
   { value: "moderator", label: "Từ moderator" },
@@ -394,3 +394,4 @@ function StatCard({ icon: Icon, label, value, tone }) {
     </div>
   );
 }
+

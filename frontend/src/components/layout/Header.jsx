@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import "../../styles/landing/Header.css";
@@ -10,7 +10,7 @@ export default function Header() {
   const dropdownRef = useRef(null);
 
   const role = user?.role?.toUpperCase() || "GUEST";
-  const isModeratorRole = role === "EDITOR" || role === "MODERATOR";
+  const isModeratorRole = role === "MODERATOR" || role === "MODERATOR";
 
   // Menu chia theo role
   const menus =
@@ -50,7 +50,7 @@ export default function Header() {
   };
 
   return (
-    <header className={`lp-header ${isModeratorRole ? "editor-header" : ""}`}>
+    <header className={`lp-header ${isModeratorRole ? "moderator-header" : ""}`}>
       <div className="lp-header-content">
         <Link to="/">
           <img src="/image/logo.png" alt="ILAS Logo" className="lp-logo" />
@@ -113,4 +113,5 @@ export default function Header() {
     </header>
   );
 }
+
 

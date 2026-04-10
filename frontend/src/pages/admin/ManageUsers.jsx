@@ -246,7 +246,7 @@ export default function ManageUsers() {
           >
             <option value="All">Tất cả</option>
             <option value="Admin">Admin</option>
-            <option value="Editor">Editor</option>
+            <option value="Moderator">Moderator</option>
             <option value="User">User</option>
           </select>
         </div>
@@ -427,7 +427,7 @@ export default function ManageUsers() {
                 <label className="form-label">Vai Trò</label>
                 <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="form-input">
                   <option value="User">User</option>
-                  <option value="Editor">Editor</option>
+                  <option value="Moderator">Moderator</option>
                   <option value="Admin">Admin</option>
                 </select>
               </div>
@@ -442,3 +442,4 @@ export default function ManageUsers() {
     </div>
   );
 }
+

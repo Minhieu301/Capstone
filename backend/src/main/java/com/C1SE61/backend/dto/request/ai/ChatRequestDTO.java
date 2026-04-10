@@ -6,5 +6,6 @@ import lombok.Data;
 public class ChatRequestDTO {
     private Integer userId;     
     private String question;     
+    private String conversationId;
     private boolean saveLog = true; 
 }

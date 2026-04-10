@@ -5,7 +5,7 @@ import PrivateRoute from "./routes/PrivateRoute";
 
 // ===== Layouts =====
 import UserLayout from "./layouts/UserLayout";
-import EditorLayout from "./layouts/EditorLayout";
+import ModeratorLayout from "./layouts/ModeratorLayout";
 import AdminLayout from "./layouts/AdminLayout";
 
 // ===== Public Pages =====
@@ -26,12 +26,12 @@ import HelpContactPage from "./pages/user/HelpContactPage";
 import ChatHistoryPage from "./components/chatbot/ChatHistoryPage";
 
 
-// ===== Editor Pages =====
-import DashboardEditor from "./pages/editor/DashboardEditor";
-import SimplifyPage from "./pages/editor/SimplifyPage";
-import FormPageEditor from "./pages/editor/FormPage";
-import FeedbackPage from "./pages/editor/FeedbackPage";
-import HelpCenterPage from "./pages/editor/HelpCenterPage";
+// ===== Moderator Pages =====
+import DashboardModerator from "./pages/moderator/DashboardModerator";
+import SimplifyPage from "./pages/moderator/SimplifyPage";
+import FormPageModerator from "./pages/moderator/FormPage";
+import FeedbackPage from "./pages/moderator/FeedbackPage";
+import HelpCenterPage from "./pages/moderator/HelpCenterPage";
 
 // ===== Admin Pages =====
 import DashboardAdmin from "./pages/admin/DashboardAdmin";
@@ -57,7 +57,7 @@ const router = createBrowserRouter([
       {
         path: "profile",
         element: (
-          <PrivateRoute allowedRoles={["USER", "EDITOR", "MODERATOR"]}>
+          <PrivateRoute allowedRoles={["USER", "MODERATOR", "MODERATOR"]}>
             <ProfilePage />
           </PrivateRoute>
         ),
@@ -67,7 +67,7 @@ const router = createBrowserRouter([
       {
         path: "chat/history",
         element: (
-          <PrivateRoute allowedRoles={["USER", "EDITOR", "MODERATOR"]}>
+          <PrivateRoute allowedRoles={["USER", "MODERATOR", "MODERATOR"]}>
             <ChatHistoryPage />
           </PrivateRoute>
         ),
@@ -97,18 +97,18 @@ const router = createBrowserRouter([
     ],
   },
 
-  // ===== Editor =====
+  // ===== Moderator =====
   {
-    path: "/editor",
+    path: "/moderator",
     element: (
-      <PrivateRoute allowedRoles={["EDITOR", "MODERATOR"]}>
-        <EditorLayout />
+      <PrivateRoute allowedRoles={["MODERATOR", "MODERATOR"]}>
+        <ModeratorLayout />
       </PrivateRoute>
     ),
     children: [
-      { path: "dashboard", element: <DashboardEditor /> },
+      { path: "dashboard", element: <DashboardModerator /> },
       { path: "simplify", element: <SimplifyPage /> },
-      { path: "forms", element: <FormPageEditor /> },
+      { path: "forms", element: <FormPageModerator /> },
       { path: "feedback", element: <FeedbackPage /> },
       { path: "help", element: <HelpCenterPage /> },
     ],
@@ -118,14 +118,14 @@ const router = createBrowserRouter([
   {
     path: "/moderator",
     element: (
-      <PrivateRoute allowedRoles={["EDITOR", "MODERATOR"]}>
-        <EditorLayout />
+      <PrivateRoute allowedRoles={["MODERATOR", "MODERATOR"]}>
+        <ModeratorLayout />
       </PrivateRoute>
     ),
     children: [
-      { path: "dashboard", element: <DashboardEditor /> },
+      { path: "dashboard", element: <DashboardModerator /> },
       { path: "simplify", element: <SimplifyPage /> },
-      { path: "forms", element: <FormPageEditor /> },
+      { path: "forms", element: <FormPageModerator /> },
       { path: "feedback", element: <FeedbackPage /> },
       { path: "help", element: <HelpCenterPage /> },
     ],
@@ -174,3 +174,4 @@ function App() {
 }
 
 export default App;
+

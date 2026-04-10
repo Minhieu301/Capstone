@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -26,6 +27,13 @@ public class SecurityConfig {
 
     public SecurityConfig(JwtAuthenticationFilter jwtFilter) {
         this.jwtFilter = jwtFilter;
+    }
+
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        // Chatbot endpoints are intentionally public and stateless.
+        // Ignoring them avoids unexpected 403s from security filters on POST/DELETE.
+        return (web) -> web.ignoring().requestMatchers("/api/chatbot/**");
     }
 
     @Bean
@@ -52,10 +60,10 @@ public class SecurityConfig {
                 "/api/forms/**",
                 "/api/track/**",
 
-                "/api/editor/forms/**",
-                "/api/editor/form-stats/**",
-                "/api/editor/simplified/by-article/**",
-                "/api/editor/feedback-stats/**",
+                "/api/moderator/forms/**",
+                "/api/moderator/form-stats/**",
+                "/api/moderator/simplified/by-article/**",
+                "/api/moderator/feedback-stats/**",
                 "/api/chatbot/admin/**",
                 "/api/chatbot/**",
                 "/api/ai/**",
@@ -63,9 +71,8 @@ public class SecurityConfig {
             ).permitAll()
 
             .requestMatchers("/api/users/**").authenticated()
-            .requestMatchers("/api/editor/**").hasAnyAuthority(
+            .requestMatchers("/api/moderator/**").hasAnyAuthority(
                 "Admin", "ADMIN", "admin",
-                "Editor", "editor",
                 "Moderator", "MODERATOR", "moderator"
             )
             .requestMatchers("/api/admin/**").hasAnyAuthority("Admin", "ADMIN", "admin")
@@ -86,15 +93,13 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Allow local dev origins (CRA 3000, Vite 5173, localhost/127.0.0.1)
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://127.0.0.1:3000",
-                "http://127.0.0.1:5173"
+        // Allow local dev origins on any port (CRA/Vite and custom ports)
+        config.setAllowedOriginPatterns(List.of(
+            "http://localhost:*",
+            "http://127.0.0.1:*"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true); 
 
@@ -103,3 +108,4 @@ public class SecurityConfig {
         return source;
     }
 }
+

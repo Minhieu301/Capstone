@@ -7,7 +7,7 @@ import "../../styles/admin/DashboardAdmin.css";
 const DashboardAdmin = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
-    totalEditors: 0,
+    totalModerators: 0,
     totalAdmins: 0,
     pendingContent: 0,
   });
@@ -99,7 +99,7 @@ const DashboardAdmin = () => {
         const summary = data.stats || {};
         setStats({
           totalUsers: summary.totalUsers || 0,
-          totalEditors: 0,
+          totalModerators: 0,
           totalAdmins: 0,
           pendingContent: (summary.newForms || 0) + (summary.newFeedback || 0),
         });
@@ -149,14 +149,14 @@ const DashboardAdmin = () => {
       if (Array.isArray(usersRes?.data)) {
         const users = usersRes.data;
         const adminCount = users.filter((u) => String(u.role || "").toUpperCase() === "ADMIN").length;
-        const editorCount = users.filter((u) => {
+        const moderatorCount = users.filter((u) => {
           const role = String(u.role || "").toUpperCase();
-          return role === "EDITOR" || role === "MODERATOR";
+          return role === "MODERATOR" || role === "MODERATOR";
         }).length;
         setStats((prev) => ({
           ...prev,
           totalAdmins: adminCount,
-          totalEditors: editorCount,
+          totalModerators: moderatorCount,
         }));
       }
 
@@ -292,7 +292,7 @@ const DashboardAdmin = () => {
           <div className="admdash-metric-icon"><UserCheck size={18} /></div>
           <div className="admdash-metric-tag neutral">Ổn định</div>
           <div className="admdash-metric-label">Tổng biên tập viên</div>
-          <div className="admdash-metric-value">{stats.totalEditors.toLocaleString("vi-VN")}</div>
+          <div className="admdash-metric-value">{stats.totalModerators.toLocaleString("vi-VN")}</div>
         </article>
         <article className="admdash-metric-card">
           <div className="admdash-metric-icon"><Shield size={18} /></div>
@@ -376,3 +376,4 @@ const DashboardAdmin = () => {
 };
 
 export default DashboardAdmin;
+

@@ -22,7 +22,7 @@ const feedbackAPI = {
   },
 
   /**
-   * Lấy tất cả feedback (Admin/Editor)
+   * Lấy tất cả feedback (Admin/Moderator)
    */
   getAllFeedbacks: async (page = 0, size = 10) => {
     try {
@@ -41,7 +41,7 @@ const feedbackAPI = {
   },
 
   /**
-   * Lấy feedback theo trạng thái (Admin/Editor)
+   * Lấy feedback theo trạng thái (Admin/Moderator)
    */
   getFeedbacksByStatus: async (status, page = 0, size = 10) => {
     try {
@@ -79,7 +79,7 @@ const feedbackAPI = {
   },
 
   /**
-   * Cập nhật trạng thái feedback (Admin/Editor)
+   * Cập nhật trạng thái feedback (Admin/Moderator)
    */
   updateFeedbackStatus: async (feedbackId, status) => {
     try {
@@ -99,4 +99,5 @@ const feedbackAPI = {
 };
 
 export { feedbackAPI };
+
 

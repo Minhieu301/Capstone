@@ -15,7 +15,7 @@ import java.util.Optional;
 @Repository
 public interface FormTemplateRepository extends JpaRepository<FormTemplate, Integer> {
     
-    List<FormTemplate> findByEditor_UserId(Integer editorId);
+    List<FormTemplate> findByModerator_UserId(Integer moderatorId);
     // Find all templates ordered by creation date
     List<FormTemplate> findAllByOrderByCreatedAtDesc();
     // Find all templates with pagination
@@ -85,5 +85,6 @@ public interface FormTemplateRepository extends JpaRepository<FormTemplate, Inte
 
     List<FormTemplate> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 }
+
 
 

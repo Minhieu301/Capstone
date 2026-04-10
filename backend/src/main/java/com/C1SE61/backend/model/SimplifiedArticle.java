@@ -24,8 +24,8 @@ public class SimplifiedArticle {
     private Article article;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "editor_id", nullable = false)
-    private UserAccount editor;
+    @JoinColumn(name = "moderator_id", nullable = false)
+    private UserAccount moderator;
 
     @Column(length = 100)
     private String category;
@@ -48,3 +48,4 @@ public class SimplifiedArticle {
         ARCHIVED
     }
 }
+

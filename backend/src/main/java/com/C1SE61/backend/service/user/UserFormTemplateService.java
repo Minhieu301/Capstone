@@ -153,7 +153,7 @@ public class UserFormTemplateService {
         dto.setCategory(template.getCategory());
         dto.setFileUrl(template.getFileUrl());
 
-        // Derive file metadata (name, type, size) so user view matches editor upload
+        // Derive file metadata (name, type, size) so user view matches moderator upload
         populateFileMetadata(dto);
 
         dto.setStatus(template.getStatus() != null ? template.getStatus().name() : "draft");
@@ -164,9 +164,9 @@ public class UserFormTemplateService {
             dto.setRelatedArticleTitle(template.getRelatedArticle().getArticleTitle());
         }
 
-        if (template.getEditor() != null) {
-            dto.setEditorId(template.getEditor().getUserId());
-            dto.setEditorName(template.getEditor().getFullName());
+        if (template.getModerator() != null) {
+            dto.setModeratorId(template.getModerator().getUserId());
+            dto.setModeratorName(template.getModerator().getFullName());
         }
         return dto;
     }
@@ -259,3 +259,4 @@ public class UserFormTemplateService {
         }
     }
 }
+

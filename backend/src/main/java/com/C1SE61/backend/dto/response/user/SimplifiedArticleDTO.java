@@ -8,8 +8,8 @@ public class SimplifiedArticleDTO {
     private Integer id;
     private Integer articleId;
     private String articleTitle;
-    private Integer editorId;
-    private String editorName;
+    private Integer moderatorId;
+    private String moderatorName;
     private String category;
     private String contentSimplified;
     private String status;
@@ -35,10 +35,10 @@ public class SimplifiedArticleDTO {
             this.articleTitle = simplifiedArticle.getArticle().getArticleTitle();
         }
 
-        // Mapping Editor safely
-        if (simplifiedArticle.getEditor() != null) {
-            this.editorId = simplifiedArticle.getEditor().getUserId();
-            this.editorName = simplifiedArticle.getEditor().getFullName();
+        // Mapping Moderator safely
+        if (simplifiedArticle.getModerator() != null) {
+            this.moderatorId = simplifiedArticle.getModerator().getUserId();
+            this.moderatorName = simplifiedArticle.getModerator().getFullName();
         }
     }
 
@@ -67,20 +67,20 @@ public class SimplifiedArticleDTO {
         this.articleTitle = articleTitle;
     }
 
-    public Integer getEditorId() {
-        return editorId;
+    public Integer getModeratorId() {
+        return moderatorId;
     }
 
-    public void setEditorId(Integer editorId) {
-        this.editorId = editorId;
+    public void setModeratorId(Integer moderatorId) {
+        this.moderatorId = moderatorId;
     }
 
-    public String getEditorName() {
-        return editorName;
+    public String getModeratorName() {
+        return moderatorName;
     }
 
-    public void setEditorName(String editorName) {
-        this.editorName = editorName;
+    public void setModeratorName(String moderatorName) {
+        this.moderatorName = moderatorName;
     }
 
     public String getCategory() {
@@ -121,8 +121,8 @@ public class SimplifiedArticleDTO {
         return "SimplifiedArticleDTO{" +
                 "id=" + id +
                 ", articleId=" + articleId +
-                ", editorId=" + editorId +
-                ", editorName='" + editorName + '\'' +
+                ", moderatorId=" + moderatorId +
+                ", moderatorName='" + moderatorName + '\'' +
                 ", category='" + category + '\'' +
                 ", contentSimplified='" + contentSimplified + '\'' +
                 ", status='" + status + '\'' +
@@ -130,3 +130,4 @@ public class SimplifiedArticleDTO {
                 '}';
     }
 }
+

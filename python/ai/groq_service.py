@@ -1,10 +1,13 @@
-﻿# ai/groq_service.py — ILAS Legal Edition (Optimized + Supports Settings)
+# ai/groq_service.py — ILAS Legal Edition (Optimized + Supports Settings)
 
 import os
 import requests
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+# Load .env from project root
+env_path = Path(__file__).parent.parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 API_URL = "https://api.groq.com/openai/v1/chat/completions"
 API_KEY = os.getenv("GROQ_API_KEY")

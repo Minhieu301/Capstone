@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     # 1) Build vector store
     run("python -m ai.build_vector_store_chunks")
-    run("python -m ai.build_vector_store_faq")
+    
     run("python -m ai.build_vector_store_simplified")
 
     # 2) Build BM25
