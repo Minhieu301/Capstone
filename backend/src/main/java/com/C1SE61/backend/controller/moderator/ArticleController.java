@@ -30,12 +30,22 @@ public class ArticleController {
                         ? raw.substring(0, 200) + "..."
                         : raw;
 
-                return Map.<String, Object>of(
-                    "articleId", a.getArticleId(),
-                    "articleNumber", a.getArticleNumber(),
-                    "articleTitle", a.getArticleTitle(),
-                    "content", preview
-                );
+                Integer lawId = null;
+                String lawTitle = null;
+                if (a.getLaw() != null) {
+                    lawId = a.getLaw().getLawId();
+                    lawTitle = a.getLaw().getTitle();
+                }
+
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("articleId", a.getArticleId());
+                row.put("articleNumber", a.getArticleNumber());
+                row.put("articleTitle", a.getArticleTitle());
+                row.put("content", preview);
+                row.put("lawId", lawId);
+                row.put("lawTitle", lawTitle);
+
+                return row;
             })
             .collect(Collectors.toList());
 
@@ -48,12 +58,23 @@ public class ArticleController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Integer id) {
         return articleRepo.findById(id)
-                .map(a -> Map.of(
-                    "articleId", a.getArticleId(),
-                    "articleNumber", a.getArticleNumber(),
-                    "articleTitle", a.getArticleTitle(),
-                    "content", a.getContent()
-                ))
+                .map(a -> {
+                    Integer lawId = null;
+                    String lawTitle = null;
+                    if (a.getLaw() != null) {
+                        lawId = a.getLaw().getLawId();
+                        lawTitle = a.getLaw().getTitle();
+                    }
+
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("articleId", a.getArticleId());
+                    row.put("articleNumber", a.getArticleNumber());
+                    row.put("articleTitle", a.getArticleTitle());
+                    row.put("content", a.getContent());
+                    row.put("lawId", lawId);
+                    row.put("lawTitle", lawTitle);
+                    return row;
+                })
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

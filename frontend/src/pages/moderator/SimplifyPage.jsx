@@ -14,6 +14,7 @@ import "../../styles/moderator/SimplifyPage.css";
 
 export default function SimplifyPage() {
   const [articles, setArticles] = useState([]);
+  const [selectedLawId, setSelectedLawId] = useState("");
   const [articleId, setArticleId] = useState("");
   const [articleTitle, setArticleTitle] = useState("");
   const [originalText, setOriginalText] = useState("");
@@ -118,6 +119,9 @@ export default function SimplifyPage() {
           if (!active) return;
 
           const art = resOriginal.data || {};
+          if (art.lawId) {
+            setSelectedLawId(Number(art.lawId));
+          }
           setArticleTitle(art.articleTitle || "");
           setOriginalText(art.content || "");
 
@@ -233,7 +237,71 @@ export default function SimplifyPage() {
     articleStatusMap[s.articleId] = s.status;
   });
 
-  const filteredArticles = articles;
+  const lawOptions = useMemo(() => {
+    const map = new Map();
+
+    articles.forEach((article) => {
+      if (!article?.lawId) return;
+      if (!map.has(article.lawId)) {
+        map.set(article.lawId, {
+          lawId: article.lawId,
+          lawTitle: article.lawTitle || `Bộ luật #${article.lawId}`,
+        });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) =>
+      String(a.lawTitle).localeCompare(String(b.lawTitle), "vi", {
+        sensitivity: "base",
+      })
+    );
+  }, [articles]);
+
+  const filteredArticles = useMemo(() => {
+    if (!selectedLawId) return articles;
+    return articles.filter(
+      (article) => Number(article.lawId) === Number(selectedLawId)
+    );
+  }, [articles, selectedLawId]);
+
+  useEffect(() => {
+    if (!articleId) return;
+
+    const selectedArticle = articles.find(
+      (item) => Number(item.articleId) === Number(articleId)
+    );
+
+    if (selectedArticle?.lawId && Number(selectedLawId) !== Number(selectedArticle.lawId)) {
+      setSelectedLawId(Number(selectedArticle.lawId));
+    }
+  }, [articleId, articles, selectedLawId]);
+
+  useEffect(() => {
+    if (!articleId) return;
+
+    const stillAvailable = filteredArticles.some(
+      (item) => Number(item.articleId) === Number(articleId)
+    );
+
+    if (!stillAvailable) {
+      setArticleId("");
+      setArticleTitle("");
+      setOriginalText("");
+      setSimplifiedText("");
+      setCurrentStatus(null);
+      setMessage("ℹ️ Đã đổi bộ luật, vui lòng chọn điều luật tương ứng.");
+    }
+  }, [articleId, filteredArticles]);
+
+  const selectedLawTitle = useMemo(() => {
+    if (!articleId) return "Chưa chọn bộ luật";
+
+    const selectedArticle = articles.find(
+      (item) => Number(item.articleId) === Number(articleId)
+    );
+
+    return selectedArticle?.lawTitle?.trim() || "Chưa xác định bộ luật";
+  }, [articleId, articles]);
 
   const filteredList = mySimplified.filter((s) =>
     statusFilter === "ALL" ? true : s.status === statusFilter
@@ -475,22 +543,44 @@ export default function SimplifyPage() {
           <div className="simplify-selector-card">
             <div className="simplify-selector-label">Lựa chọn văn bản pháp luật</div>
 
-            <div className="simplify-selector-field">
-              <FiSearch aria-hidden="true" />
-              <select
-                value={articleId}
-                onChange={(e) =>
-                  setArticleId(e.target.value ? Number(e.target.value) : "")
-                }
-              >
-                <option value="">-- Chọn điều luật --</option>
-                {filteredArticles.map((a) => (
-                  <option key={a.articleId} value={a.articleId}>
-                    {a.articleTitle?.trim()}
+            <div className="simplify-selector-grid">
+              <div className="simplify-selector-field">
+                <FiSearch aria-hidden="true" />
+                <select
+                  value={selectedLawId}
+                  onChange={(e) =>
+                    setSelectedLawId(e.target.value ? Number(e.target.value) : "")
+                  }
+                >
+                  <option value="">-- Chọn bộ luật --</option>
+                  {lawOptions.map((law) => (
+                    <option key={law.lawId} value={law.lawId}>
+                      {law.lawTitle?.trim()}
+                    </option>
+                  ))}
+                </select>
+                <FiChevronDown aria-hidden="true" />
+              </div>
+
+              <div className="simplify-selector-field">
+                <FiSearch aria-hidden="true" />
+                <select
+                  value={articleId}
+                  onChange={(e) =>
+                    setArticleId(e.target.value ? Number(e.target.value) : "")
+                  }
+                >
+                  <option value="">
+                    {selectedLawId ? "-- Chọn điều luật trong bộ đã chọn --" : "-- Chọn điều luật --"}
                   </option>
-                ))}
-              </select>
-              <FiChevronDown aria-hidden="true" />
+                  {filteredArticles.map((a) => (
+                    <option key={a.articleId} value={a.articleId}>
+                      {a.articleTitle?.trim()}
+                    </option>
+                  ))}
+                </select>
+                <FiChevronDown aria-hidden="true" />
+              </div>
             </div>
           </div>
 
@@ -517,7 +607,7 @@ export default function SimplifyPage() {
                   <p className="law-box-empty">Chọn điều luật để xem nội dung gốc.</p>
                 )}
 
-                <div className="law-box-footer">Bộ luật lao động 2019</div>
+                <div className="law-box-footer">{selectedLawTitle}</div>
               </div>
             </article>
 

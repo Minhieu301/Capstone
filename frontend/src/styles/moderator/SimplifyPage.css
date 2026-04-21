@@ -118,6 +118,17 @@
   color: #3e6fb7;
 }
 
+.simplify-selector-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.simplify-selector-grid .simplify-selector-field {
+  margin-top: 0;
+}
+
 .simplify-selector-field select {
   flex: 1;
   border: 0;
@@ -602,6 +613,10 @@
 }
 
 @media (max-width: 640px) {
+  .simplify-selector-grid {
+    grid-template-columns: 1fr;
+  }
+
   .simplify-selector-field {
     padding-right: 12px;
   }
