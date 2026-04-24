@@ -48,7 +48,7 @@ const authAPI = {
     }
   },
 
-  // ✅ Lấy thông tin user hiện tại từ token
+  //  Lấy thông tin user hiện tại từ token
   getCurrentUser: async () => {
     try {
       const response = await api.get("/auth/me", {

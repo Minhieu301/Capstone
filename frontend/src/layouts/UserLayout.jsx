@@ -33,9 +33,12 @@ export default function UserLayout() {
     isProfilePage
   ) {
     return (
-      <main style={{ minHeight: "75vh" }}>
-        <Outlet />
-      </main>
+      <>
+        <main style={{ minHeight: "75vh" }}>
+          <Outlet />
+        </main>
+        <ChatWidget />
+      </>
     );
   }
 

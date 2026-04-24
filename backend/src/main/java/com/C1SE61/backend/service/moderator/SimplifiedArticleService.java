@@ -178,6 +178,24 @@ public class SimplifiedArticleService {
         return updated;
     }
 
+    public int showAllToUser(Integer moderatorId) {
+        List<SimplifiedArticle> mine = simplifiedRepo.findByModerator_UserId(moderatorId);
+        int updated = 0;
+
+        for (SimplifiedArticle item : mine) {
+            if (item.getStatus() == SimplifiedArticle.Status.ARCHIVED) {
+                item.setStatus(SimplifiedArticle.Status.APPROVED);
+                updated++;
+            }
+        }
+
+        if (!mine.isEmpty()) {
+            simplifiedRepo.saveAll(mine);
+        }
+
+        return updated;
+    }
+
     public SimplifiedArticleResponseDTO hideFromUser(Integer simplifiedId, Integer moderatorId) {
         SimplifiedArticle target = simplifiedRepo.findById(simplifiedId)
                 .orElseThrow(() -> new RuntimeException("Simplified article not found"));
@@ -187,6 +205,19 @@ public class SimplifiedArticleService {
         }
 
         target.setStatus(SimplifiedArticle.Status.ARCHIVED);
+        SimplifiedArticle saved = simplifiedRepo.save(target);
+        return SimplifiedArticleResponseDTO.fromEntity(saved);
+    }
+
+    public SimplifiedArticleResponseDTO showToUser(Integer simplifiedId, Integer moderatorId) {
+        SimplifiedArticle target = simplifiedRepo.findById(simplifiedId)
+                .orElseThrow(() -> new RuntimeException("Simplified article not found"));
+
+        if (!target.getModerator().getUserId().equals(moderatorId)) {
+            throw new RuntimeException("You are not allowed to update this simplified article");
+        }
+
+        target.setStatus(SimplifiedArticle.Status.APPROVED);
         SimplifiedArticle saved = simplifiedRepo.save(target);
         return SimplifiedArticleResponseDTO.fromEntity(saved);
     }

@@ -198,6 +198,66 @@
   cursor: not-allowed;
 }
 
+.usearch-history {
+  margin-top: 10px;
+  border: 1px solid #dde3ec;
+  border-radius: 10px;
+  background: #f6f8fb;
+  padding: 10px 12px;
+}
+
+.usearch-history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.usearch-history-head h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4b5f75;
+}
+
+.usearch-history-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.usearch-history-actions button {
+  min-height: 26px;
+  border: 1px solid #d6deea;
+  border-radius: 999px;
+  background: #eef3fb;
+  color: #4f6177;
+  font-size: 0.75rem;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.usearch-history-list {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.usearch-history-tag {
+  min-height: 28px;
+  border: 1px solid #cbd5e4;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #40546c;
+  font-size: 0.8rem;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.usearch-history-tag:hover {
+  border-color: #7fa3d6;
+  color: #244d86;
+}
+
 .usearch-error {
   margin-top: 10px;
   border-radius: 8px;
@@ -477,6 +537,11 @@
 
   .usearch-searchbar {
     flex-direction: column;
+  }
+
+  .usearch-history-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .usearch-search-btn {

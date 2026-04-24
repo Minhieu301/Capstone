@@ -28,6 +28,8 @@ export default function Laws({ hideSimplifiedManagement = false }) {
   const [articles, setArticles] = useState([]);
   const [chapterSearch, setChapterSearch] = useState('');
   const [articleSearch, setArticleSearch] = useState('');
+  const [chapterLawFilter, setChapterLawFilter] = useState('');
+  const [articleLawFilter, setArticleLawFilter] = useState('');
   const [chapterStatusFilter, setChapterStatusFilter] = useState('');
   const [articleStatusFilter, setArticleStatusFilter] = useState('');
   const [chapterPage, setChapterPage] = useState(1);
@@ -316,11 +318,11 @@ export default function Laws({ hideSimplifiedManagement = false }) {
   // Reset page when filters change
   useEffect(() => {
     setChapterPage(1);
-  }, [chapterSearch, chapterStatusFilter]);
+  }, [chapterSearch, chapterStatusFilter, chapterLawFilter]);
 
   useEffect(() => {
     setArticlePage(1);
-  }, [articleSearch, articleStatusFilter]);
+  }, [articleSearch, articleStatusFilter, articleLawFilter]);
 
   const renderApprovalItem = (item, status) => (
     <div key={item.id} className="approval-item">
@@ -376,6 +378,16 @@ export default function Laws({ hideSimplifiedManagement = false }) {
   const lawCount = laws.length;
   const chapterCount = chapters.length;
   const articleCount = articles.length;
+  const chapterLawOptions = [...new Map(
+    chapters
+      .filter((ch) => ch.lawId || ch.lawTitle)
+      .map((ch) => [String(ch.lawId || ch.lawTitle), { id: String(ch.lawId || ch.lawTitle), title: ch.lawTitle || `Luật #${ch.lawId}` }])
+  ).values()].sort((a, b) => a.title.localeCompare(b.title, 'vi'));
+  const articleLawOptions = [...new Map(
+    articles
+      .filter((ar) => ar.lawId || ar.lawTitle)
+      .map((ar) => [String(ar.lawId || ar.lawTitle), { id: String(ar.lawId || ar.lawTitle), title: ar.lawTitle || `Luật #${ar.lawId}` }])
+  ).values()].sort((a, b) => a.title.localeCompare(b.title, 'vi'));
   const filteredChapters = chapters.filter((ch) => {
     const keyword = chapterSearch.trim().toLowerCase();
     const matchKeyword = !keyword || [
@@ -385,7 +397,8 @@ export default function Laws({ hideSimplifiedManagement = false }) {
       ch.lawId
     ].some((v) => String(v || '').toLowerCase().includes(keyword));
     const matchStatus = !chapterStatusFilter || (ch.status || '').toLowerCase() === chapterStatusFilter.toLowerCase();
-    return matchKeyword && matchStatus;
+    const matchLaw = !chapterLawFilter || String(ch.lawId || ch.lawTitle || '') === chapterLawFilter;
+    return matchKeyword && matchStatus && matchLaw;
   });
   const filteredArticles = articles.filter((ar) => {
     const keyword = articleSearch.trim().toLowerCase();
@@ -397,7 +410,8 @@ export default function Laws({ hideSimplifiedManagement = false }) {
       ar.content
     ].some((v) => String(v || '').toLowerCase().includes(keyword));
     const matchStatus = !articleStatusFilter || (ar.status || '').toLowerCase() === articleStatusFilter.toLowerCase();
-    return matchKeyword && matchStatus;
+    const matchLaw = !articleLawFilter || String(ar.lawId || ar.lawTitle || '') === articleLawFilter;
+    return matchKeyword && matchStatus && matchLaw;
   });
   const filteredChapterCount = filteredChapters.length;
   const filteredArticleCount = filteredArticles.length;
@@ -971,6 +985,23 @@ export default function Laws({ hideSimplifiedManagement = false }) {
               }}
             />
             <select
+              value={chapterLawFilter}
+              onChange={(e) => setChapterLawFilter(e.target.value)}
+              style={{
+                width: '240px',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+                outline: 'none',
+                background: '#fff'
+              }}
+            >
+              <option value="">Tất cả bộ luật</option>
+              {chapterLawOptions.map((law) => (
+                <option key={law.id} value={law.id}>{law.title}</option>
+              ))}
+            </select>
+            <select
               value={chapterStatusFilter}
               onChange={(e) => setChapterStatusFilter(e.target.value)}
               style={{
@@ -1058,6 +1089,23 @@ export default function Laws({ hideSimplifiedManagement = false }) {
                 outline: 'none'
               }}
             />
+            <select
+              value={articleLawFilter}
+              onChange={(e) => setArticleLawFilter(e.target.value)}
+              style={{
+                width: '240px',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+                outline: 'none',
+                background: '#fff'
+              }}
+            >
+              <option value="">Tất cả bộ luật</option>
+              {articleLawOptions.map((law) => (
+                <option key={law.id} value={law.id}>{law.title}</option>
+              ))}
+            </select>
             <select
               value={articleStatusFilter}
               onChange={(e) => setArticleStatusFilter(e.target.value)}

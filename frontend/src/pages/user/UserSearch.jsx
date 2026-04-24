@@ -11,6 +11,15 @@ const UserSearch = () => {
   const [searchParams] = useSearchParams();
   const { isAuthenticated } = useAuth();
 
+  const getRecentSearches = () => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem("recentSearches") || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
   const [searchKeyword, setSearchKeyword] = useState(() => searchParams.get("q") || "");
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchResults, setSearchResults] = useState({
@@ -25,12 +34,25 @@ const UserSearch = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [error, setError] = useState("");
   const [searchType] = useState("all");
+  const [recentSearches, setRecentSearches] = useState(() => getRecentSearches());
+  const [showHistory, setShowHistory] = useState(true);
 
   const saveSearchToHistory = (keyword) => {
     if (!keyword.trim()) return;
-    const recent = JSON.parse(localStorage.getItem("recentSearches") || "[]");
+    const recent = getRecentSearches();
     const updated = [keyword, ...recent.filter((i) => i !== keyword)].slice(0, 10);
     localStorage.setItem("recentSearches", JSON.stringify(updated));
+    setRecentSearches(updated);
+  };
+
+  const handleClearSearchHistory = () => {
+    localStorage.removeItem("recentSearches");
+    setRecentSearches([]);
+  };
+
+  const handleSelectHistory = (keyword) => {
+    setSearchKeyword(keyword);
+    handleSearch(keyword);
   };
 
   const performSearch = async (keyword, page = 0) => {
@@ -251,6 +273,35 @@ const UserSearch = () => {
               {loading ? "Đang tìm..." : "Tìm kiếm"}
             </button>
           </div>
+
+          {recentSearches.length > 0 && (
+            <div className="usearch-history">
+              <div className="usearch-history-head">
+                <h4>Tìm kiếm gần đây</h4>
+                <div className="usearch-history-actions">
+                  <button type="button" onClick={() => setShowHistory((prev) => !prev)}>
+                    {showHistory ? "Ẩn" : "Hiện"}
+                  </button>
+                  <button type="button" onClick={handleClearSearchHistory}>Xóa</button>
+                </div>
+              </div>
+
+              {showHistory && (
+                <div className="usearch-history-list">
+                  {recentSearches.map((item) => (
+                    <button
+                      type="button"
+                      className="usearch-history-tag"
+                      key={item}
+                      onClick={() => handleSelectHistory(item)}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {error && <div className="usearch-error">{error}</div>}
 

@@ -84,6 +84,19 @@ public class SimplifiedArticleController {
         }
     }
 
+    @PutMapping("/show-all/{moderatorId}")
+    public ResponseEntity<?> showAll(@PathVariable Integer moderatorId) {
+        try {
+            int updated = simplifiedService.showAllToUser(moderatorId);
+            return ResponseEntity.ok(Map.of(
+                    "updated", updated,
+                    "message", "Shown all simplified items to users successfully"
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @PutMapping("/{simplifiedId}/hide-from-user")
     public ResponseEntity<?> hideFromUser(
             @PathVariable Integer simplifiedId,
@@ -91,6 +104,18 @@ public class SimplifiedArticleController {
     ) {
         try {
             return ResponseEntity.ok(simplifiedService.hideFromUser(simplifiedId, moderatorId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{simplifiedId}/show-to-user")
+    public ResponseEntity<?> showToUser(
+            @PathVariable Integer simplifiedId,
+            @RequestParam Integer moderatorId
+    ) {
+        try {
+            return ResponseEntity.ok(simplifiedService.showToUser(simplifiedId, moderatorId));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

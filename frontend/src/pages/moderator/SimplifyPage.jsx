@@ -26,9 +26,13 @@ export default function SimplifyPage() {
   const [currentStatus, setCurrentStatus] = useState(null);
   const [isEditingDraft, setIsEditingDraft] = useState(false);
   const [activeSection, setActiveSection] = useState("simplify");
+  const [pendingQueueCount, setPendingQueueCount] = useState(0);
+  const [approvingAll, setApprovingAll] = useState(false);
+  const [bulkGenerating, setBulkGenerating] = useState(false);
 
   const API_ARTICLE = "http://localhost:8080/api/articles";
   const API_SIMPLIFIED = "http://localhost:8080/api/moderator/simplified";
+  const API_SIMPLIFIED_MANAGEMENT = "http://localhost:8080/api/moderator/simplified-management";
   const API_AI = "http://localhost:8080/api/ai/summarize-law";
 
   const token = localStorage.getItem("token");
@@ -72,6 +76,29 @@ export default function SimplifyPage() {
   useEffect(() => {
     refreshMine();
   }, [refreshMine]);
+
+  const refreshPendingQueueCount = useCallback(async () => {
+    try {
+      const res = await axios.get(API_SIMPLIFIED_MANAGEMENT, {
+        headers: authHeader,
+        params: { status: "PENDING", page: 0, size: 1 },
+        validateStatus: () => true,
+      });
+
+      if (res.status === 200) {
+        const total = Number(res.data?.data?.totalElements || 0);
+        setPendingQueueCount(total);
+      } else {
+        setPendingQueueCount(0);
+      }
+    } catch {
+      setPendingQueueCount(0);
+    }
+  }, [API_SIMPLIFIED_MANAGEMENT, authHeader]);
+
+  useEffect(() => {
+    refreshPendingQueueCount();
+  }, [refreshPendingQueueCount]);
 
   // Hàm gọi AI
   const generateAI = useCallback(async () => {
@@ -342,15 +369,31 @@ export default function SimplifyPage() {
     [mySimplified]
   );
 
-  const bulkApproveCount = useMemo(
-    () => mySimplified.filter((item) => item.status !== "APPROVED").length,
-    [mySimplified]
-  );
-
   const bulkHideCount = useMemo(
     () => mySimplified.filter((item) => item.status !== "ARCHIVED").length,
     [mySimplified]
   );
+
+  const bulkShowCount = useMemo(
+    () => mySimplified.filter((item) => item.status === "ARCHIVED").length,
+    [mySimplified]
+  );
+
+  const bulkGenerateTargets = useMemo(() => {
+    const scopedArticles = selectedLawId ? filteredArticles : articles;
+    if (!scopedArticles.length) return [];
+
+    const mineByArticleId = new Map(
+      mySimplified.map((item) => [Number(item.articleId), item])
+    );
+
+    return scopedArticles.filter((article) => {
+      const mine = mineByArticleId.get(Number(article.articleId));
+      return !mine || !String(mine.contentSimplified || "").trim();
+    });
+  }, [articles, filteredArticles, mySimplified, selectedLawId]);
+
+  const bulkGenerateCount = bulkGenerateTargets.length;
 
   const queueLabel = useMemo(() => {
     if (currentStatus === "PENDING") {
@@ -406,6 +449,7 @@ export default function SimplifyPage() {
       });
 
       await refreshMine();
+      await refreshPendingQueueCount();
       if (Number(item.articleId) === Number(articleId)) {
         setCurrentStatus("APPROVED");
       }
@@ -416,28 +460,226 @@ export default function SimplifyPage() {
   };
 
   const handleApproveAll = async () => {
+    if (approvingAll) {
+      return;
+    }
+
+    if (pendingQueueCount === 0) {
+      setMessage("ℹ️ Không có bản rút gọn nào cần duyệt hàng loạt.");
+      return;
+    }
+
+    setApprovingAll(true);
+    try {
+      let page = 0;
+      const size = 100;
+      let totalApproved = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const listRes = await axios.get(API_SIMPLIFIED_MANAGEMENT, {
+          headers: authHeader,
+          params: { status: "PENDING", page, size },
+          validateStatus: () => true,
+        });
+
+        if (listRes.status !== 200) {
+          throw new Error("Cannot load pending queue");
+        }
+
+        const pageData = listRes.data?.data || {};
+        const pendingItems = Array.isArray(pageData.content) ? pageData.content : [];
+
+        if (pendingItems.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        const approveResults = await Promise.allSettled(
+          pendingItems.map((item) =>
+            axios.put(`${API_SIMPLIFIED_MANAGEMENT}/${item.id}/approve`, null, {
+              headers: authHeader,
+            })
+          )
+        );
+
+        totalApproved += approveResults.filter((result) => result.status === "fulfilled").length;
+
+        hasMore = !pageData.last;
+        page += 1;
+      }
+
+      await refreshMine();
+      await refreshPendingQueueCount();
+      setCurrentStatus((prev) => (prev && prev !== "NEW" ? "APPROVED" : prev));
+      setMessage(`✅ Đã duyệt hàng loạt ${totalApproved} bản rút gọn AI đang chờ duyệt.`);
+    } catch {
+      setMessage("❌ Không thể duyệt tất cả bản rút gọn.");
+    } finally {
+      setApprovingAll(false);
+    }
+  };
+
+  const handleGenerateAllWithAI = async () => {
     if (!moderatorId) {
       setMessage("⚠️ Không xác định được tài khoản moderator.");
       return;
     }
 
-    if (bulkApproveCount === 0) {
-      setMessage("ℹ️ Không có bản rút gọn nào cần duyệt hàng loạt.");
+    if (bulkGenerating) {
       return;
     }
 
+    if (bulkGenerateCount === 0) {
+      setMessage("ℹ️ Không có điều luật nào cần AI rút gọn thêm.");
+      return;
+    }
+
+    setBulkGenerating(true);
+    setMessage(
+      `🤖 Đang AI rút gọn hàng loạt ${bulkGenerateCount} điều luật${selectedLawId ? " trong bộ luật đã chọn" : ""}...`
+    );
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const getBackendErrorMessage = (response) => {
+      const data = response?.data;
+      if (!data) return "";
+      if (typeof data === "string") return data;
+      if (typeof data?.message === "string") return data.message;
+      if (typeof data?.error === "string") return data.error;
+      return "";
+    };
+
+    const summarizeWithRetry = async (payload, maxAttempts = 3) => {
+      let lastErrorMessage = "";
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        const aiRes = await axios.post(API_AI, payload, {
+          headers: { "Content-Type": "application/json" },
+          validateStatus: () => true,
+        });
+
+        const summary = String(aiRes.data?.summary || "").trim();
+        if (aiRes.status === 200 && summary) {
+          return { ok: true, summary };
+        }
+
+        const backendMessage = getBackendErrorMessage(aiRes);
+        lastErrorMessage = backendMessage || `HTTP ${aiRes.status}`;
+
+        // Nội dung trống thì bỏ qua luôn, retry cũng không có tác dụng.
+        if (
+          aiRes.status === 400 &&
+          (backendMessage.includes("LAW_CONTENT_EMPTY") ||
+            backendMessage.includes("Nội dung điều luật trống"))
+        ) {
+          return { ok: false, skip: true, reason: "LAW_CONTENT_EMPTY" };
+        }
+
+        if (attempt < maxAttempts) {
+          await sleep(500 * attempt);
+          continue;
+        }
+      }
+
+      return { ok: false, reason: lastErrorMessage || "AI_SUMMARIZE_FAILED" };
+    };
+
+    let createdCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+    const failureReasons = [];
+
     try {
-      const res = await axios.put(
-        `${API_SIMPLIFIED}/approve-all/${moderatorId}`,
-        null,
-        { headers: authHeader }
-      );
+      for (const article of bulkGenerateTargets) {
+        const articleIdValue = Number(article.articleId);
+        try {
+          let originalContent = String(article.content || "").trim();
+          let articleTitleValue = String(article.articleTitle || "").trim();
+
+          if (!originalContent || !articleTitleValue) {
+            const detailRes = await axios.get(`${API_ARTICLE}/${articleIdValue}`, {
+              headers: authHeader,
+              validateStatus: () => true,
+            });
+
+            if (detailRes.status !== 200) {
+              failedCount += 1;
+              continue;
+            }
+
+            originalContent = String(detailRes.data?.content || "").trim();
+            articleTitleValue = String(detailRes.data?.articleTitle || article.articleTitle || "").trim();
+          }
+
+          if (!originalContent || !articleTitleValue) {
+            skippedCount += 1;
+            continue;
+          }
+
+          const summarizeResult = await summarizeWithRetry({
+            lawContent: originalContent,
+            articleTitle: articleTitleValue,
+            articleId: articleIdValue,
+          });
+
+          if (!summarizeResult.ok) {
+            if (summarizeResult.skip) {
+              skippedCount += 1;
+            } else {
+              failedCount += 1;
+              if (failureReasons.length < 3) {
+                failureReasons.push(`Điều ${articleIdValue}: ${summarizeResult.reason}`);
+              }
+            }
+            continue;
+          }
+
+          const saveRes = await axios.post(
+            `${API_SIMPLIFIED}/create`,
+            {
+              articleId: articleIdValue,
+              moderatorId: Number(moderatorId),
+              category: articleTitleValue,
+              contentSimplified: summarizeResult.summary,
+            },
+            {
+              headers: authHeader,
+              validateStatus: () => true,
+            }
+          );
+
+          if (saveRes.status === 200) {
+            createdCount += 1;
+          } else {
+            failedCount += 1;
+            if (failureReasons.length < 3) {
+              const saveMessage = getBackendErrorMessage(saveRes) || `HTTP ${saveRes.status}`;
+              failureReasons.push(`Điều ${articleIdValue}: ${saveMessage}`);
+            }
+          }
+
+          // Giảm tần suất gọi AI để tránh rate limit khi chạy hàng loạt.
+          await sleep(250);
+        } catch {
+          failedCount += 1;
+        }
+      }
+
       await refreshMine();
-      const updatedCount = Number(res.data?.updated || 0);
-      setCurrentStatus((prev) => (prev && prev !== "NEW" ? "APPROVED" : prev));
-      setMessage(`✅ Đã duyệt hàng loạt ${updatedCount} bản rút gọn AI.`);
+      await refreshPendingQueueCount();
+
+      const reasonText = failureReasons.length
+        ? ` | Chi tiết: ${failureReasons.join("; ")}`
+        : "";
+      setMessage(
+        `✅ AI đã tạo ${createdCount} bản rút gọn. Bỏ qua ${skippedCount}. Lỗi ${failedCount}.${reasonText}`
+      );
     } catch {
-      setMessage("❌ Không thể duyệt tất cả bản rút gọn.");
+      setMessage("❌ Không thể AI rút gọn hàng loạt lúc này.");
+    } finally {
+      setBulkGenerating(false);
     }
   };
 
@@ -494,6 +736,32 @@ export default function SimplifyPage() {
     }
   };
 
+  const handleShowAllToUser = async () => {
+    if (!moderatorId) {
+      setMessage("⚠️ Không xác định được tài khoản moderator.");
+      return;
+    }
+
+    if (bulkShowCount === 0) {
+      setMessage("ℹ️ Không có bản rút gọn nào đang ẩn để hiện lại.");
+      return;
+    }
+
+    try {
+      const res = await axios.put(
+        `${API_SIMPLIFIED}/show-all/${moderatorId}`,
+        null,
+        { headers: authHeader }
+      );
+      await refreshMine();
+      const updatedCount = Number(res.data?.updated || 0);
+      setCurrentStatus((prev) => (prev === "ARCHIVED" ? "APPROVED" : prev));
+      setMessage(`👁️ Đã hiện lại ${updatedCount} bản rút gọn cho user.`);
+    } catch {
+      setMessage("❌ Không thể hiện lại tất cả bản rút gọn.");
+    }
+  };
+
   return (
     <ModeratorWorkspace
       active="simplify"
@@ -524,11 +792,13 @@ export default function SimplifyPage() {
           <div className="simplify-bulk-actions" aria-label="Thao tác hàng loạt">
             <button
               type="button"
-              className="btn approve"
-              onClick={handleApproveAll}
-              disabled={bulkApproveCount === 0}
+              className="btn submit"
+              onClick={handleGenerateAllWithAI}
+              disabled={bulkGenerateCount === 0 || bulkGenerating}
             >
-              Duyệt tất cả ({bulkApproveCount})
+              {bulkGenerating
+                ? "AI đang rút gọn..."
+                : `AI rút gọn tất cả (${bulkGenerateCount})`}
             </button>
             <button
               type="button"
@@ -537,6 +807,14 @@ export default function SimplifyPage() {
               disabled={bulkHideCount === 0}
             >
               Ẩn tất cả ({bulkHideCount})
+            </button>
+            <button
+              type="button"
+              className="btn approve"
+              onClick={handleShowAllToUser}
+              disabled={bulkShowCount === 0}
+            >
+              Hiện lại tất cả ({bulkShowCount})
             </button>
           </div>
 

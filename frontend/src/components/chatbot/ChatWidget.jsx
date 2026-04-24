@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/chatbot/ChatWidget.css";
-import { sendChatMessage, getChatHistory } from "../../api/chatbotAPI";
+import { sendChatMessage } from "../../api/chatbotAPI";
 import ReactMarkdown from "react-markdown";
 
 export default function ChatWidget() {
@@ -18,6 +18,23 @@ export default function ChatWidget() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [conversationId, setConversationId] = useState(null);
+
+  const quickQuestions = [
+    "Nghỉ việc cần báo trước bao nhiêu ngày?",
+    "Người lao động có bao nhiêu ngày nghỉ lễ?",
+    "Điều kiện hưởng trợ cấp thôi việc là gì?",
+  ];
+
+  const createConversationId = () =>
+    `widget-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const getWelcomeMessages = () => [
+    {
+      sender: "bot",
+      text: "Xin chào! Mình là trợ lý pháp lý ILAS. Bạn có thể hỏi bất kỳ câu hỏi pháp luật nào, mình sẽ trả lời kèm điều luật liên quan.",
+    },
+  ];
 
   // =========================
   // PERSIST OPEN STATE
@@ -34,25 +51,9 @@ export default function ChatWidget() {
     if (id) setUserId(parseInt(id));
   }, []);
 
-  // =========================
-  // LOAD CHAT HISTORY
-  // =========================
   useEffect(() => {
-    if (!userId) return;
-
-    (async () => {
-      try {
-        const logs = await getChatHistory(userId);
-        const formatted = logs.flatMap((l) => [
-          { sender: "user", text: l.question },
-          { sender: "bot", text: l.answer },
-        ]);
-        setMessages(formatted);
-      } catch (e) {
-        console.error("Load history error:", e);
-      }
-    })();
-  }, [userId]);
+    setMessages(getWelcomeMessages());
+  }, []);
 
   // =========================
   // AUTO SCROLL
@@ -67,13 +68,18 @@ export default function ChatWidget() {
   const sendMessage = async () => {
     if (!input.trim() || !userId || loading) return;
 
-    const text = input;
+    const text = input.trim();
     setInput("");
     setMessages((p) => [...p, { sender: "user", text }]);
     setLoading(true);
 
     try {
-      const res = await sendChatMessage(userId, text, true);
+      const activeConversationId = conversationId || createConversationId();
+      if (!conversationId) {
+        setConversationId(activeConversationId);
+      }
+
+      const res = await sendChatMessage(userId, text, true, activeConversationId);
       setMessages((p) => [...p, { sender: "bot", text: res.answer }]);
     } catch {
       setMessages((p) => [
@@ -93,6 +99,22 @@ export default function ChatWidget() {
     navigate("/chat/history");
   };
 
+  const handleToggleWidget = () => {
+    setOpen((prev) => {
+      const next = !prev;
+      if (!prev && next) {
+        setConversationId(createConversationId());
+        setMessages(getWelcomeMessages());
+        setInput("");
+      }
+      return next;
+    });
+  };
+
+  const handleQuickQuestion = (question) => {
+    setInput(question);
+  };
+
   // =========================
   // RENDER
   // =========================
@@ -101,7 +123,7 @@ export default function ChatWidget() {
   return (
     <>
       {/* CHAT BUBBLE */}
-      <button className="chat-bubble" onClick={() => setOpen((p) => !p)}>
+      <button className="chat-bubble" onClick={handleToggleWidget}>
         💬
       </button>
 
@@ -127,6 +149,28 @@ export default function ChatWidget() {
 
         {/* BODY */}
         <div className="chat-body">
+          {messages.length <= 1 && (
+            <div className="chat-welcome-card">
+              <p className="chat-welcome-title">Bắt đầu cuộc trò chuyện mới</p>
+              <p className="chat-welcome-subtitle">
+                Chọn nhanh một câu hỏi hoặc nhập nội dung của bạn bên dưới.
+              </p>
+
+              <div className="chat-quick-questions">
+                {quickQuestions.map((question) => (
+                  <button
+                    key={question}
+                    className="chat-quick-item"
+                    onClick={() => handleQuickQuestion(question)}
+                    type="button"
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {messages.map((m, i) => {
             const isError =
               m.sender === "bot" &&
