@@ -151,6 +151,38 @@ const UserSearch = () => {
     }
   };
 
+  // Load articles của một bộ luật cụ thể
+  const handleViewLawArticles = async (lawId) => {
+    setLoading(true);
+    setError("");
+    try {
+      const articlesRes = await lawAPI.getArticlesByLawId(lawId);
+      if (articlesRes?.success) {
+        const articles = articlesRes.data || [];
+
+        setSearchResults({
+          laws: [],
+          articles,
+          totalLaws: 0,
+          totalArticles: articles.length,
+          totalResults: articles.length,
+        });
+
+        setTotalPages(1);
+        setCurrentPage(0);
+        setSearchKeyword("");
+        setActiveFilter("articles");
+      } else {
+        setError(articlesRes?.message || "Không tải được danh sách điều luật");
+      }
+    } catch (requestError) {
+      console.error("Load law articles error:", requestError);
+      setError("Không thể kết nối đến server. Vui lòng thử lại sau.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSearch = (keyword = null) => {
     if (keyword && typeof keyword === "object" && "preventDefault" in keyword) {
       keyword = null;
@@ -165,12 +197,57 @@ const UserSearch = () => {
     navigate(`/user/search?q=${encodeURIComponent(term)}`, { replace: true });
   };
 
+  const handleFilterChange = async (newFilter) => {
+    setActiveFilter(newFilter);
+    
+    // Nếu chuyển sang filter "all" hoặc "laws", reload danh sách luật
+    if (newFilter === "all" || newFilter === "laws") {
+      setLoading(true);
+      try {
+        const response = await lawAPI.getAllLaws(0, 10);
+        if (response?.success) {
+          setSearchResults({
+            laws: response.data.content || [],
+            articles: [],
+            totalLaws: response.data.totalElements || 0,
+            totalArticles: 0,
+            totalResults: response.data.totalElements || 0,
+          });
+          setTotalPages(response.data.totalPages || 0);
+          setCurrentPage(0);
+          setSearchKeyword("");
+        }
+      } catch (requestError) {
+        console.error("Load laws error:", requestError);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const handlePageChange = (page) => {
-    if (searchKeyword.trim()) performSearch(searchKeyword.trim(), page);
+    if (searchKeyword.trim()) {
+      performSearch(searchKeyword.trim(), page);
+    }
   };
 
   const handleViewDetail = (item) => {
-    const realId = item.type === "law" ? item.data.lawId : item.data.articleId;
+    
+    // Nếu click vào bộ luật, hiển thị tất cả điều luật của bộ đó
+    if (item.type === "law") {
+      const lawId = item.data?.lawId || item.data?.id || item.id;
+      
+      if (!lawId) {
+        setError("Lỗi: Không thể xác định ID của bộ luật");
+        return;
+      }
+      
+      handleViewLawArticles(lawId);
+      return;
+    }
+    
+    // Nếu click vào điều luật, navigate đến detail page
+    const realId = item.data.articleId;
     navigate(`/user/search/detail?id=${realId}&type=${item.type}`);
   };
 
@@ -306,9 +383,9 @@ const UserSearch = () => {
           {error && <div className="usearch-error">{error}</div>}
 
           <div className="usearch-tabs">
-            <button className={activeFilter === "all" ? "active" : ""} onClick={() => setActiveFilter("all")}>Tất cả</button>
-            <button className={activeFilter === "laws" ? "active" : ""} onClick={() => setActiveFilter("laws")}>Văn bản</button>
-            <button className={activeFilter === "articles" ? "active" : ""} onClick={() => setActiveFilter("articles")}>Điều</button>
+            <button className={activeFilter === "all" ? "active" : ""} onClick={() => handleFilterChange("all")}>Tất cả</button>
+            <button className={activeFilter === "laws" ? "active" : ""} onClick={() => handleFilterChange("laws")}>Văn bản</button>
+            <button className={activeFilter === "articles" ? "active" : ""} onClick={() => handleFilterChange("articles")}>Điều</button>
             <button type="button" className="usearch-viewall" onClick={handleViewAllArticles}>Xem tất cả điều luật</button>
           </div>
 
@@ -327,8 +404,16 @@ const UserSearch = () => {
                   <p>{item.desc}</p>
 
                   <div className="usearch-card-actions">
-                    <button type="button" onClick={() => handleViewDetail(item)}>Xem chi tiết</button>
-                    <button type="button" className="primary" onClick={() => handleViewDetail(item)}>Xem giải thích</button>
+                    {item.type === "law" ? (
+                      <button type="button" className="primary" onClick={() => handleViewDetail(item)}>
+                        Xem bộ luật
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" onClick={() => handleViewDetail(item)}>Xem chi tiết</button>
+                        <button type="button" className="primary" onClick={() => handleViewDetail(item)}>Xem giải thích</button>
+                      </>
+                    )}
                   </div>
                 </article>
               ))}

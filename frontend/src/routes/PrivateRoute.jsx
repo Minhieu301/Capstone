@@ -19,11 +19,9 @@ export default function PrivateRoute({ children, allowedRoles }) {
   }
 
   // 🔥 In ra Console để debug xem chúng ta đang nhận được chữ gì
-  console.log(`🛡️ Kiểm tra Quyền - Bạn đang là: [${userRole}] | Trang này yêu cầu:`, allowedRoles);
 
   // 3. So sánh quyền
   if (allowedRoles && !allowedRoles.includes(userRole)) {
-    console.warn("⛔ Cấm vào! Bạn không có quyền truy cập trang này.");
     return <Navigate to="/login" replace />;
   }
 

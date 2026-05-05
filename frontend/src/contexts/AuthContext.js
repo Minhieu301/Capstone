@@ -65,8 +65,6 @@ export const AuthProvider = ({ children }) => {
         // Cập nhật Context state
         setUser(formattedUser);
         setBackendAvailable(true);
-
-        console.log("✅ Đăng nhập thành công:", formattedUser);
         return { success: true, user: formattedUser };
       } else {
         return { success: false, message: "Sai thông tin đăng nhập" };
@@ -148,12 +146,6 @@ export const AuthProvider = ({ children }) => {
     register,
   };
 
-  console.log("🎯 AuthContext:", {
-    user,
-    isAuthenticated: !!user,
-    backendAvailable,
-    loading,
-  });
 
   return (
     <AuthContext.Provider value={value}>
