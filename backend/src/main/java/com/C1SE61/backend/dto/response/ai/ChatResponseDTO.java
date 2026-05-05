@@ -15,4 +15,5 @@ public class ChatResponseDTO {
     private String answer;
     private List<String> sources;
     private List<String> chunks;
+    private String conversationId;
 }

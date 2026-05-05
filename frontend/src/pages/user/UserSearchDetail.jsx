@@ -4,6 +4,7 @@ import UserSidebar from "../../components/user/UserSidebar";
 import { useAuth } from "../../contexts/AuthContext";
 import { lawAPI } from "../../api/law";
 import { feedbackAPI } from "../../api/feedback";
+import { sendChatMessage } from "../../api/chatbotAPI";
 import "../../styles/user/UserSearchDetail.css";
 
 const UserSearchDetail = () => {
@@ -220,20 +221,19 @@ const UserSearchDetail = () => {
     const question = chatInput?.trim();
     if (!question) return;
     const uid = user?.userId || parseInt(localStorage.getItem("userId")) || null;
-    const payload = { userId: uid, question, saveLog: true };
     // append user message immediately
     setChatHistoryLocal((h) => [...h, { sender: "user", text: question }]);
     setChatInput("");
     setChatLoading(true);
     try {
-      const res = await fetch("http://localhost:8080/api/chatbot/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      // data.answer expected
-      const answer = data?.answer || "Rất tiếc, hệ thống không trả lời được.";
+      // Read any existing conversationId (nullable) and send to backend; backend will return a UUID to persist
+      let conversationId = sessionStorage.getItem("chat_conversation_id") || null;
+      const data = await sendChatMessage(uid, question, true, conversationId);
+      const answer = data?.answer || "Rất tiếc, hệ thống không trả về nội dung.";
+      // If backend returned conversationId (UUID), persist it for future turns
+      if (data?.conversationId) {
+        sessionStorage.setItem("chat_conversation_id", data.conversationId);
+      }
       setChatHistoryLocal((h) => [...h, { sender: "bot", text: answer, sources: data?.sources }]);
     } catch (err) {
       console.error("Chatbot ask failed", err);

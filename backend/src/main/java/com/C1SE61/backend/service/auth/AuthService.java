@@ -25,9 +25,9 @@ public class AuthService {
     public LoginResponseDTO login(LoginRequestDTO request) {
         String identifier = request.getIdentifier();
 
-        UserAccount user = userRepo.findByEmail(identifier)
-                .or(() -> userRepo.findByUsername(identifier))
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
+        // Use single query that checks both username and email to avoid double DB roundtrips
+        UserAccount user = userRepo.findByUsernameOrEmail(identifier, identifier)
+            .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new RuntimeException("Mật khẩu không đúng");
@@ -62,8 +62,9 @@ public class AuthService {
             throw new RuntimeException("Tên đăng nhập đã tồn tại");
         }
 
-        Role userRole = roleRepo.findById(3)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy role User"));
+        Role userRole = roleRepo.findFirstByRoleNameIgnoreCase("User")
+            .or(() -> roleRepo.findById(3))
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy role mặc định cho người dùng"));
 
         UserAccount user = new UserAccount();
         user.setUsername(request.getUsername());

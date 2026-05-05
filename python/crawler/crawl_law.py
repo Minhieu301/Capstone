@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import re
 import unicodedata
+from pathlib import Path
+
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
@@ -41,6 +44,21 @@ def _title_similarity(a: str, b: str) -> float:
     return len(ta & tb) / len(ta | tb)
 
 
+def _resolve_chromium_executable():
+    configured = os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", "").strip()
+    if configured and Path(configured).exists():
+        return configured
+
+    browsers_root = Path.home() / "AppData" / "Local" / "ms-playwright"
+    if browsers_root.exists():
+        for candidate_dir in sorted(browsers_root.glob("chromium-*"), reverse=True):
+            chrome_exe = candidate_dir / "chrome-win64" / "chrome.exe"
+            if chrome_exe.exists():
+                return str(chrome_exe)
+
+    return None
+
+
 def crawl_law_page(url: str):
     # BẮT ĐẦU
     log_step("Bắt đầu crawl luật")
@@ -49,7 +67,13 @@ def crawl_law_page(url: str):
     # TẢI HTML
     log_step("Đang tải HTML")
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        launch_kwargs = {"headless": True}
+        chromium_executable = _resolve_chromium_executable()
+        if chromium_executable:
+            launch_kwargs["executable_path"] = chromium_executable
+            log_step(f"Dùng Chromium đã cài: {chromium_executable}")
+
+        browser = p.chromium.launch(**launch_kwargs)
         page = browser.new_page(viewport={"width": 1440, "height": 2200})
 
         try:

@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -31,6 +32,8 @@ public class ChatbotService {
     private final ChatbotSettingsRepository settingsRepo;
 
     private static final String PYTHON_API = "http://127.0.0.1:5000/api/ask";
+    private static final int PYTHON_CONNECT_TIMEOUT_MS = 5_000;
+    private static final int PYTHON_READ_TIMEOUT_MS = 60_000;
 
     // =====================================================
     // TOP QUESTIONS (ADMIN)
@@ -49,7 +52,7 @@ public class ChatbotService {
         Integer userId = req.getUserId();
         String conversationId = (req.getConversationId() != null && !req.getConversationId().isBlank())
             ? req.getConversationId().trim()
-            : "conv-" + UUID.randomUUID();
+            : UUID.randomUUID().toString();
 
         UserAccount user = (userId != null)
                 ? userRepo.findById(userId).orElse(null)
@@ -67,18 +70,19 @@ public class ChatbotService {
         // 2️⃣ CHECK ENABLED
         // -------------------------------------------------
         if (!settings.isEnabled()) {
-            return new ChatResponseDTO(
-                    question,
-                    "⚠️ Chatbot hiện đang được tắt bởi quản trị viên.",
-                    List.of(),
-                    List.of()
-            );
+            ChatResponseDTO r = new ChatResponseDTO();
+            r.setQuestion(question);
+            r.setAnswer("⚠️ Chatbot hiện đang được tắt bởi quản trị viên.");
+            r.setSources(List.of());
+            r.setChunks(List.of());
+            r.setConversationId(conversationId);
+            return r;
         }
 
         // -------------------------------------------------
         // 3️⃣ PREPARE REQUEST TO PYTHON
         // -------------------------------------------------
-        RestTemplate rest = new RestTemplate();
+        RestTemplate rest = createRestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -92,6 +96,32 @@ public class ChatbotService {
         if (settings.getTemperature() != null) settingsMap.put("temperature", settings.getTemperature());
         if (settings.getMaxTokens() != null) settingsMap.put("maxTokens", settings.getMaxTokens());
         body.put("settings", settingsMap);
+
+        if (conversationId != null && !conversationId.isBlank()) {
+            int historyLimit = (settings.getMaxHistory() != null && settings.getMaxHistory() > 0)
+                ? Math.min(settings.getMaxHistory(), 5)
+                : 5;
+
+            List<ChatbotLog> conversationLogs;
+            if (user != null) {
+                conversationLogs = chatbotRepo.findTop5ByConversationIdAndUser_UserIdOrderByCreatedAtAsc(conversationId, user.getUserId());
+            } else {
+                conversationLogs = chatbotRepo.findTop5ByConversationIdOrderByCreatedAtAsc(conversationId);
+            }
+
+            if (conversationLogs == null) conversationLogs = List.of();
+
+            List<Map<String, String>> historyList = conversationLogs.stream()
+                .map(log -> Map.of(
+                    "content", log.getQuestion() == null ? "" : log.getQuestion(),
+                    "answer", log.getAnswer() == null ? "" : log.getAnswer()
+                ))
+                .toList();
+
+            body.put("conversation_id", conversationId);
+            body.put("history", historyList);
+
+        }
 
         HttpEntity<Map<String, Object>> entity =
                 new HttpEntity<>(body, headers);
@@ -139,7 +169,7 @@ public class ChatbotService {
             }
 
         } catch (RestClientException e) {
-            answer = "⚠️ Không thể kết nối AI server.";
+            answer = "⚠️ AI phản hồi quá chậm hoặc không thể kết nối. Vui lòng thử lại.";
             sourceType = "error";
         }
 
@@ -147,6 +177,16 @@ public class ChatbotService {
         // 5️⃣ SAVE LOG
         // -------------------------------------------------
         if (saveLog) {
+            // determine sequence based on existing history size
+            int seq = 1;
+            List<ChatbotLog> existing;
+            if (user != null) {
+                existing = chatbotRepo.findTop5ByConversationIdAndUser_UserIdOrderByCreatedAtAsc(conversationId, user.getUserId());
+            } else {
+                existing = chatbotRepo.findTop5ByConversationIdOrderByCreatedAtAsc(conversationId);
+            }
+            if (existing != null) seq = existing.size() + 1;
+
             ChatbotLog log = new ChatbotLog();
             log.setUser(user);
             log.setQuestion(question);
@@ -156,6 +196,7 @@ public class ChatbotService {
             log.setQuestionClean(normalize(question));
             log.setSourceRole("USER");
             log.setConversationId(conversationId);
+            log.setSequence(seq);
 
             chatbotRepo.save(log);
         }
@@ -163,12 +204,13 @@ public class ChatbotService {
         // -------------------------------------------------
         // 6️⃣ RETURN RESPONSE
         // -------------------------------------------------
-        return new ChatResponseDTO(
-                question,
-                answer,
-                sources,
-                chunks
-        );
+        ChatResponseDTO resp = new ChatResponseDTO();
+        resp.setQuestion(question);
+        resp.setAnswer(answer);
+        resp.setSources(sources);
+        resp.setChunks(chunks);
+        resp.setConversationId(conversationId);
+        return resp;
     }
 
     // =====================================================
@@ -215,5 +257,12 @@ public class ChatbotService {
                 .replaceAll("[^a-zA-Z0-9àáạãảâấầậẫẩăắằặẵẳđèéẹẽẻêếềệễể"
                         + "ìíịĩỉòóọõỏôốồộỗổơớờợỡởùúụũủưứừựữử"
                         + "ỳýỵỹỷ\\s]", "").trim();
+    }
+
+    private RestTemplate createRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(PYTHON_CONNECT_TIMEOUT_MS);
+        factory.setReadTimeout(PYTHON_READ_TIMEOUT_MS);
+        return new RestTemplate(factory);
     }
 }

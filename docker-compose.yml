@@ -1,0 +1,111 @@
+version: "3.9"
+
+services:
+
+  # ─── MySQL ─────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: ilas_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-halo20231}
+      MYSQL_DATABASE: ilas_db
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-halo20231}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ilas_net
+
+  # ─── Python AI Server ──────────────────────────────────────────
+  ai:
+    build:
+      context: ./python
+      dockerfile: python.Dockerfile
+    container_name: ilas_ai
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-ilas_db}
+      DB_USER: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-halo20231}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      AI_PROVIDER: ${AI_PROVIDER:-gemini}
+    ports:
+      - "5000:5000"
+    volumes:
+      - ai_vector_store:/app/vector_store
+      - ai_bm25_index:/app/bm25_index
+    networks:
+      - ilas_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ─── Spring Boot API ───────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: backend.Dockerfile
+    container_name: ilas_backend
+    restart: unless-stopped
+    environment:
+      DB_URL: ${DB_URL:-jdbc:mysql://host.docker.internal:3306/ilas_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-halo20231}
+      JWT_SECRET: ${JWT_SECRET:-change-this-in-production-minimum-256-bits-secret}
+      JWT_EXPIRATION: 86400000
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      PYTHON_AI_URL: http://ai:5000
+      # Crawler chạy trong cùng container python qua HTTP
+      CRAWLER_PYTHON_EXECUTABLE: python
+      CRAWLER_PYTHON_WORKDIR: /app
+      CRAWLER_PYTHON_MODULE: crawler.run_crawl_api
+      CRAWLER_TIMEOUT_SECONDS: 600
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      ai:
+        condition: service_started
+    networks:
+      - ilas_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ─── React Frontend ────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: frontend.Dockerfile
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8080}
+    container_name: ilas_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - ilas_net
+
+# ─── Volumes ────────────────────────────────────────────────────
+volumes:
+  mysql_data:
+  ai_vector_store:
+  ai_bm25_index:
+  backend_uploads:
+
+# ─── Network ────────────────────────────────────────────────────
+networks:
+  ilas_net:
+    driver: bridge

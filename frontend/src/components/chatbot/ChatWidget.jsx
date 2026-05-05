@@ -18,16 +18,22 @@ export default function ChatWidget() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
-  const [conversationId, setConversationId] = useState(null);
+  const [conversationId, setConversationId] = useState(
+    () => sessionStorage.getItem("chat_conversation_id")
+  );
 
   const quickQuestions = [
+    "Điều 35 nói gì?",
+    "Khoản 1 thì sao?",
     "Nghỉ việc cần báo trước bao nhiêu ngày?",
     "Người lao động có bao nhiêu ngày nghỉ lễ?",
     "Điều kiện hưởng trợ cấp thôi việc là gì?",
+    "Thủ tục khiếu nại phải làm thế nào?",
+    "Mức phạt vi phạm hành chính là bao nhiêu?",
+    "Hợp đồng thử việc tối đa được bao lâu?",
   ];
 
-  const createConversationId = () =>
-    `widget-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  // Conversation ID will be assigned by backend; keep client-side null until backend returns
 
   const getWelcomeMessages = () => [
     {
@@ -55,6 +61,14 @@ export default function ChatWidget() {
     setMessages(getWelcomeMessages());
   }, []);
 
+  useEffect(() => {
+    if (conversationId) {
+      sessionStorage.setItem("chat_conversation_id", conversationId);
+    } else {
+      sessionStorage.removeItem("chat_conversation_id");
+    }
+  }, [conversationId]);
+
   // =========================
   // AUTO SCROLL
   // =========================
@@ -63,10 +77,44 @@ export default function ChatWidget() {
   }, [messages, open]);
 
   // =========================
+  // SUGGESTION EXTRACTION
+  // =========================
+  const extractSuggestions = (text) => {
+    if (!text || typeof text !== "string") return [];
+
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const suggestions = [];
+
+    const bulletRe = /^[\-\*\u2022]\s*(.+)$/;
+    const numberedRe = /^\d+[\.|\)]\s*(.+)$/;
+
+    for (const line of lines) {
+      let m = line.match(bulletRe) || line.match(numberedRe);
+      if (m && m[1]) {
+        suggestions.push(m[1].trim());
+      }
+    }
+
+    // If no bullets/numbering found, try comma-separated list in first few lines
+    if (suggestions.length === 0 && lines.length > 0) {
+      for (const line of lines.slice(0, 3)) {
+        if ((line.match(/,/g) || []).length >= 1) {
+          const parts = line.split(",").map((p) => p.trim()).filter(Boolean);
+          if (parts.length >= 2 && parts.length <= 8) {
+            return parts;
+          }
+        }
+      }
+    }
+
+    return suggestions;
+  };
+
+  // =========================
   // SEND MESSAGE
   // =========================
   const sendMessage = async () => {
-    if (!input.trim() || !userId || loading) return;
+    if (!input.trim() || loading) return;
 
     const text = input.trim();
     setInput("");
@@ -74,13 +122,35 @@ export default function ChatWidget() {
     setLoading(true);
 
     try {
-      const activeConversationId = conversationId || createConversationId();
-      if (!conversationId) {
-        setConversationId(activeConversationId);
-      }
+      const res = await sendChatMessage(userId, text, true, conversationId);
+      const botText = res.answer || "";
+      const suggestions = extractSuggestions(botText);
+      // update conversationId from backend if provided
+      if (res?.conversationId) setConversationId(res.conversationId);
+      setMessages((p) => [...p, { sender: "bot", text: botText, suggestions }]);
+    } catch {
+      setMessages((p) => [
+        ...p,
+        { sender: "bot", text: "❌ Lỗi hệ thống nội bộ. Vui lòng thử lại sau." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      const res = await sendChatMessage(userId, text, true, activeConversationId);
-      setMessages((p) => [...p, { sender: "bot", text: res.answer }]);
+  // Send an explicit text (used for suggestion chips)
+  const sendMessageWithText = async (overrideText) => {
+    if (!overrideText || loading) return;
+    setInput("");
+    setMessages((p) => [...p, { sender: "user", text: overrideText }]);
+    setLoading(true);
+
+    try {
+      const res = await sendChatMessage(userId, overrideText, true, conversationId);
+      const botText = res.answer || "";
+      const suggestions = extractSuggestions(botText);
+      if (res?.conversationId) setConversationId(res.conversationId);
+      setMessages((p) => [...p, { sender: "bot", text: botText, suggestions }]);
     } catch {
       setMessages((p) => [
         ...p,
@@ -99,16 +169,14 @@ export default function ChatWidget() {
     navigate("/chat/history");
   };
 
+  // Start a fresh conversation (user-triggered)
+  const startNewChat = () => {
+    setConversationId(null);
+    setMessages(getWelcomeMessages());
+  };
+
   const handleToggleWidget = () => {
-    setOpen((prev) => {
-      const next = !prev;
-      if (!prev && next) {
-        setConversationId(createConversationId());
-        setMessages(getWelcomeMessages());
-        setInput("");
-      }
-      return next;
-    });
+    setOpen((prev) => !prev);
   };
 
   const handleQuickQuestion = (question) => {
@@ -134,6 +202,9 @@ export default function ChatWidget() {
           <span>AI Legal Assistant</span>
 
           <div className="header-actions">
+            <button className="icon-btn" onClick={startNewChat} title="New Chat">
+              ⟳
+            </button>
             <button className="icon-btn" onClick={handleExpand} title="Phóng to">
               ↗
             </button>
@@ -188,7 +259,23 @@ export default function ChatWidget() {
                   }`}
                 >
                   {m.sender === "bot" ? (
-                    <ReactMarkdown>{m.text}</ReactMarkdown>
+                    <>
+                      <ReactMarkdown>{m.text}</ReactMarkdown>
+                      {Array.isArray(m.suggestions) && m.suggestions.length > 0 && (
+                        <div className="chat-suggestions">
+                          {m.suggestions.map((s, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              className="chat-suggestion"
+                              onClick={() => sendMessageWithText(s)}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     m.text
                   )}

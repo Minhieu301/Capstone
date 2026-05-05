@@ -6,31 +6,92 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 # Load .env from project root
-env_path = Path(__file__).parent.parent / ".env"
+env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 from ai.retrieval_level6 import retrieve_multi_source
 from ai.context_builder import build_context
-from ai.groq_service import guarded_completion, fallback_general_answer, rewrite_legal_query
 import time
+
+RETRIEVAL_TIMEOUT_SEC = int(os.getenv("RETRIEVAL_TIMEOUT_SEC", "20"))
 
 # DYNAMIC MODEL SELECTION
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower().strip()
 
 if AI_PROVIDER == "groq":
-    from ai.groq_service import guarded_completion, fallback_general_answer
+    from ai.groq_service import guarded_completion, fallback_general_answer, rewrite_legal_query
     _ACTIVE_PROVIDER = "Groq"
 else:
     # Default to gemini
-    from ai.gemini_service import guarded_completion, fallback_general_answer
+    from ai.gemini_service import guarded_completion, fallback_general_answer, rewrite_legal_query
     _ACTIVE_PROVIDER = "Gemini"
 
+print(f"🤖 Active completion provider: {_ACTIVE_PROVIDER}")
 
-def answer_legal_question(query: str, settings: dict = None):
+
+def _truncate_text(text: str, max_length: int = 280) -> str:
+    cleaned = str(text or "").strip()
+    if len(cleaned) <= max_length:
+        return cleaned
+    return cleaned[: max_length - 3].rstrip() + "..."
+
+
+def _build_conversation_context(history) -> str:
+    if not history:
+        return ""
+
+    lines = []
+    for item in list(history)[-4:]:
+        if not isinstance(item, dict):
+            continue
+
+        # History items use 'content' for the user's message
+        question = _truncate_text(item.get("content", ""))
+        answer = _truncate_text(item.get("answer", ""))
+
+        if question:
+            lines.append(f"Người dùng: {question}")
+        if answer:
+            lines.append(f"Trợ lý: {answer}")
+
+    return "\n".join(lines)
+
+
+def _should_rewrite_query(query: str, conversation_context: str) -> bool:
+    q = (query or "").strip().lower()
+    if not q:
+        return False
+
+    # Nếu không có hội thoại trước đó thì không cần rewrite.
+    if not conversation_context or not conversation_context.strip():
+        return False
+
+    # Chỉ rewrite cho các câu follow-up mơ hồ để giảm 1 lượt gọi model.
+    follow_up_markers = [
+        "khoản",
+        "điều đó",
+        "trường hợp này",
+        "cái đó",
+        "ý đó",
+        "nói rõ hơn",
+        "thế còn",
+        "còn nếu",
+        "phần trên",
+        "mục trên",
+        "đoạn trên",
+        "nội dung đó",
+    ]
+    return any(marker in q for marker in follow_up_markers)
+
+
+def answer_legal_question(query: str, settings: dict = None, history=None, conversation_id=None):
     if settings is None:
         settings = {}
+
+    conversation_context = _build_conversation_context(history)
 
     # 0.5) Check enabled
     if settings.get("enabled") is False:
@@ -62,13 +123,23 @@ def answer_legal_question(query: str, settings: dict = None):
 
     # 2) Filter nguồn dữ liệu
     source_filter = settings.get("dataSource", "all")
-    #optimized_query = rewrite_legal_query(query)
-    #print(f"🔍 Câu hỏi gốc: {query}")
-    #print(f"🚀 Câu tối ưu: {optimized_query}")
+    if _should_rewrite_query(query, conversation_context):
+        optimized_query = rewrite_legal_query(query, conversation_context)
+        search_query = optimized_query.strip() if isinstance(optimized_query, str) and optimized_query.strip() else query
+    else:
+        search_query = query
+
+    print(f"🔍 Câu hỏi gốc: {query}")
+    print(f"🚀 Câu tối ưu: {search_query}")
 
     try:
         # 3) Retrieval (có filter nguồn)
-        results = retrieve_multi_source(query, source_filter=source_filter)
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(retrieve_multi_source, search_query, source_filter)
+        try:
+            results = future.result(timeout=RETRIEVAL_TIMEOUT_SEC)
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         print("\n===== DEBUG RETRIEVAL =====")
         print("TOP SOURCE:", results[0].get("source") if results else None)
@@ -78,7 +149,7 @@ def answer_legal_question(query: str, settings: dict = None):
 
         # Retrieval fail
         if not results:
-            fb = fallback_general_answer(query)
+            fb = fallback_general_answer(query, conversation_context)
             return {
                 "answer": fb + "\n\n⚠️ *Ghi chú: Câu trả lời này không dựa trên dữ liệu ILAS (fallback Gemini).*",
                 "context_used": None,
@@ -90,7 +161,7 @@ def answer_legal_question(query: str, settings: dict = None):
         context = build_context(results)
 
         if not context or len(context.strip()) == 0:
-            fb = fallback_general_answer(query)
+            fb = fallback_general_answer(query, conversation_context)
             return {
                 "answer": fb + "\n\n⚠️ *Không tìm thấy quy định phù hợp trong dữ liệu ILAS (fallback Gemini).*",
                 "context_used": None,
@@ -106,6 +177,8 @@ def answer_legal_question(query: str, settings: dict = None):
             answer = guarded_completion(
                 context=context,
                 question=query, # LƯU Ý: Chỗ này VẪN GIỮ NGUYÊN là 'query' gốc nhé
+                conversation_context=conversation_context,
+                history=history,
                 temperature=float(temperature),
                 max_tokens=int(max_tokens)
             )
@@ -126,6 +199,8 @@ def answer_legal_question(query: str, settings: dict = None):
                         groq_answer = groq_guarded_completion(
                             context=context,
                             question=query,
+                            conversation_context=conversation_context,
+                            history=history,
                             temperature=float(temperature),
                             max_tokens=int(max_tokens)
                         )
@@ -153,6 +228,16 @@ def answer_legal_question(query: str, settings: dict = None):
             "context_used": source_title,
             "source": f"article_{article_number}",
             "fallback": False
+        }
+
+    except FuturesTimeoutError:
+        print(f"❌ RETRIEVAL TIMEOUT: exceeded {RETRIEVAL_TIMEOUT_SEC}s")
+        fb = fallback_general_answer(query, conversation_context)
+        return {
+            "answer": fb + "\n\n⚠️ *Tra cứu dữ liệu ILAS bị chậm nên hệ thống tạm trả lời theo kiến thức chung.*",
+            "context_used": None,
+            "source": "fallback-timeout",
+            "fallback": True
         }
 
     except Exception as e:

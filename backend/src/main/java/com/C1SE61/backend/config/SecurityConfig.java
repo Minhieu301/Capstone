@@ -97,7 +97,9 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         // Allow local dev origins on any port (CRA/Vite and custom ports)
         config.setAllowedOriginPatterns(List.of(
+            "http://localhost",
             "http://localhost:*",
+            "http://127.0.0.1",
             "http://127.0.0.1:*"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

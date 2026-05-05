@@ -7,7 +7,9 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "chatbot_log")
+@Table(name = "chatbot_log", indexes = {
+    @Index(name = "idx_chatbot_conversation_sequence", columnList = "conversation_id, sequence")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -42,8 +44,11 @@ public class ChatbotLog {
     @Column(name = "source_role", length = 20)
     private String sourceRole;
 
-    @Column(name = "conversation_id", length = 64)
+    @Column(name = "conversation_id", length = 36)
     private String conversationId;
+
+    @Column(name = "sequence")
+    private Integer sequence;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

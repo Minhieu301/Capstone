@@ -1,6 +1,7 @@
 import numpy as np
 from pathlib import Path
 import json
+import os
 import re
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -9,6 +10,7 @@ from ai.bm25_index import bm25_search
 from ai.legal_topic_boost import topic_boost, is_labor_question
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "vector_store"
+ENABLE_INTENT_SHORTCUT = os.getenv("ENABLE_INTENT_SHORTCUT", "false").lower() == "true"
 
 
 # ======================================
@@ -118,7 +120,21 @@ def semantic_retrieve(source, query_vec, top_k=20):
     if source is None:
         return []
 
-    sims = cosine_similarity([query_vec], source["vectors"])[0]
+    if query_vec is None:
+        return []
+
+    vectors = source.get("vectors")
+    if vectors is None or vectors.ndim != 2 or vectors.size == 0:
+        return []
+
+    if query_vec.shape[0] != vectors.shape[1]:
+        print(
+            f"[RAG] SKIP {source['name']} -> embedding dim mismatch "
+            f"query={query_vec.shape[0]} vectors={vectors.shape[1]}"
+        )
+        return []
+
+    sims = cosine_similarity([query_vec], vectors)[0]
     idxs = np.argsort(sims)[::-1][:top_k]
 
     meta = source["meta"]
@@ -234,20 +250,25 @@ def retrieve_multi_source(query: str, source_filter="all"):
             "final_score": 999
         }]
 
-    # 2️⃣ Intent
-    intent = detect_intent(query)
-    if intent:
-        art = INTENT_TO_ARTICLES[intent][0]
-        print(f"🔥 INTENT MATCH: {intent} -> Điều {art}")
-        return [{
-            "article_number": str(art),
-            "source": "articles",
-            "text": "",
-            "final_score": 999
-        }]
+    # 2️⃣ Intent shortcut (OPTIONAL)
+    # Mặc định tắt để tránh lệ thuộc rule cứng theo từng câu hỏi.
+    if ENABLE_INTENT_SHORTCUT:
+        intent = detect_intent(query)
+        if intent:
+            art = INTENT_TO_ARTICLES[intent][0]
+            print(f"🔥 INTENT MATCH: {intent} -> Điều {art}")
+            return [{
+                "article_number": str(art),
+                "source": "articles",
+                "text": "",
+                "final_score": 999
+            }]
 
     # 3️⃣ Normal Retrieval
     query_vec = get_local_embedding(query)
+    if query_vec is None:
+        return []
+
     sem_results = []
 
     for source in SOURCES:

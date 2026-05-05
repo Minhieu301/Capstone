@@ -57,12 +57,13 @@ export default function ChatHistoryPage() {
     : [];
 
   const suggestionChips = [
-    "Mức trợ cấp thôi việc là bao nhiêu?",
-    "Thủ tục khiếu nại tại ILAS",
-    "Mẫu đơn kiện sai quy trình",
+    "Điều 35 nói gì?",
+    "Quyền nghỉ ốm hưởng lương như thế nào?",
+    "Ai được hưởng trợ cấp thất nghiệp?",
   ];
 
-  const createConversationId = () => `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  // Remove long-lived client-side conversation IDs. Use temporary pending ids
+  // and adopt backend-provided `conversationId` when available.
 
   const getDeletedConversationStorageKey = () => `chat-deleted-conversations-${userId || "guest"}`;
 
@@ -179,7 +180,8 @@ export default function ChatHistoryPage() {
       let conversationId = activeConversationId;
 
       if (!conversationId) {
-        conversationId = createConversationId();
+        // create a temporary draft id while waiting for backend to return UUID
+        conversationId = createPendingId();
         draftConversationRef.current = conversationId;
         const nowIso = new Date().toISOString();
         setConversations((prev) => ({
@@ -232,6 +234,7 @@ export default function ChatHistoryPage() {
       const data = await sendChatMessage(userId, question, true, conversationId);
       const doneIso = new Date().toISOString();
 
+      // Update optimistic log with backend answer
       setConversations((prev) => {
         const existing = prev[conversationId] || {
           id: conversationId,
@@ -241,24 +244,41 @@ export default function ChatHistoryPage() {
           logs: [],
         };
 
+        const updated = {
+          ...existing,
+          title: existing.logs.length === 0 ? shortTitle(question) : existing.title,
+          updatedAt: doneIso,
+          logs: existing.logs.map((log) =>
+            log.id === pendingId
+              ? {
+                  ...log,
+                  answer: data?.answer || "⚠️ AI chưa trả về nội dung.",
+                  pending: false,
+                }
+              : log
+          ),
+        };
+
+        // If backend returned a real conversationId (UUID), migrate the draft key
+        const backendConvId = data?.conversationId || conversationId;
+        if (backendConvId && backendConvId !== conversationId) {
+          const next = { ...prev };
+          // assign updated conversation under backend id and remove draft
+          next[backendConvId] = { ...updated, id: backendConvId };
+          delete next[conversationId];
+          return next;
+        }
+
         return {
           ...prev,
-          [conversationId]: {
-            ...existing,
-            title: existing.logs.length === 0 ? shortTitle(question) : existing.title,
-            updatedAt: doneIso,
-            logs: existing.logs.map((log) =>
-              log.id === pendingId
-                ? {
-                    ...log,
-                    answer: data?.answer || "⚠️ AI chưa trả về nội dung.",
-                    pending: false,
-                  }
-                : log
-            ),
-          },
+          [conversationId]: updated,
         };
       });
+
+      // If backend provided a UUID, switch selection to it
+      if (data?.conversationId && data.conversationId !== conversationId) {
+        setSelectedConversationId(data.conversationId);
+      }
 
       if (draftConversationRef.current === conversationId) {
         draftConversationRef.current = null;
@@ -294,7 +314,7 @@ export default function ChatHistoryPage() {
   };
 
   const handleNewChat = () => {
-    const conversationId = createConversationId();
+    const conversationId = `pending-conv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const nowIso = new Date().toISOString();
     draftConversationRef.current = conversationId;
 

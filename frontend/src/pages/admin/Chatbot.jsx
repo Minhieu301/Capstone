@@ -6,6 +6,7 @@ import {
   Database,
   Power,
 } from "lucide-react";
+import api from "../../api/api";
 import "../../styles/admin/chatbot.css";
 
 export default function Chatbot() {
@@ -41,17 +42,13 @@ export default function Chatbot() {
   // LOAD SETTINGS
   // =====================
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    
-    fetch("http://localhost:8080/api/chatbot/admin/settings", { headers })
-      .then((res) => res.ok ? res.json() : Promise.reject("API error"))
-      .then((data) => {
+    api.get("/chatbot/admin/settings")
+      .then((res) => {
+        const data = res.data;
         if (data && typeof data === "object") {
           setSettings((prev) => ({
             ...prev,
             ...data,
-            // Ensure numeric fields have valid defaults
             responseDelay: data.responseDelay ?? prev.responseDelay ?? 500,
             maxHistory: data.maxHistory ?? prev.maxHistory ?? 50,
             temperature: data.temperature ?? prev.temperature ?? 0.7,
@@ -66,12 +63,9 @@ export default function Chatbot() {
   // LOAD STATS
   // =====================
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    
-    fetch("http://localhost:8080/api/chatbot/admin/stats", { headers })
-      .then((res) => res.ok ? res.json() : Promise.reject("API error"))
-      .then((data) => {
+    api.get("/chatbot/admin/stats")
+      .then((res) => {
+        const data = res.data;
         if (data && typeof data === "object") {
           setStats(data);
         }
@@ -83,12 +77,9 @@ export default function Chatbot() {
   // LOAD CHAT LOGS
   // =====================
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    
-    fetch("http://localhost:8080/api/chatbot/admin/logs", { headers })
-      .then((res) => res.ok ? res.json() : Promise.reject("API error"))
-      .then((data) => {
+    api.get("/chatbot/admin/logs")
+      .then((res) => {
+        const data = res.data;
         if (Array.isArray(data)) {
           setChatHistory(data);
         }
@@ -100,15 +91,8 @@ export default function Chatbot() {
   // LOAD CHATBOT STATUS
   // =====================
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    
-    fetch("http://localhost:8080/api/admin/ai/status", { headers })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => setChatbotRunning(data?.isRunning || false))
+    api.get("/admin/ai/status")
+      .then((res) => setChatbotRunning(res.data?.isRunning || false))
       .catch((err) => {
         console.error("Load chatbot status failed", err);
         setChatbotRunning(false);
@@ -125,47 +109,29 @@ export default function Chatbot() {
     setSettings((prev) => ({ ...prev, enabled: newValue }));
 
     try {
-      const token = localStorage.getItem("token");
-      const headers = {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      };
-
       // 1. Save settings to DB
-      await fetch("http://localhost:8080/api/chatbot/admin/settings", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ ...settings, enabled: newValue }),
-      });
+      await api.post("/chatbot/admin/settings", { ...settings, enabled: newValue });
 
       // 2. Start or stop AI process
       if (newValue) {
-        const res = await fetch("http://localhost:8080/api/admin/ai/start", {
-          method: "POST",
-          headers,
-        });
-        const data = res.ok ? await res.json() : null;
-        if (res.ok) {
+        const res = await api.post("/admin/ai/start");
+        if (res.status === 200) {
           setChatbotRunning(true);
         } else {
-          alert("❌ " + (data?.message || "Không thể khởi động Chatbot AI"));
+          alert("❌ " + (res.data?.message || "Không thể khởi động Chatbot AI"));
           setSettings((prev) => ({ ...prev, enabled: false }));
         }
       } else {
-        const res = await fetch("http://localhost:8080/api/admin/ai/stop", {
-          method: "DELETE",
-          headers,
-        });
-        const data = res.ok ? await res.json() : null;
-        if (res.ok) {
+        const res = await api.delete("/admin/ai/stop");
+        if (res.status === 200) {
           setChatbotRunning(false);
         } else {
-          alert("❌ " + (data?.message || "Không thể dừng Chatbot AI"));
+          alert("❌ " + (res.data?.message || "Không thể dừng Chatbot AI"));
           setSettings((prev) => ({ ...prev, enabled: true }));
         }
       }
     } catch (err) {
-      alert("Lỗi: " + err.message);
+      alert("Lỗi: " + (err.response?.data?.message || err.message));
       setSettings((prev) => ({ ...prev, enabled: !newValue }));
     } finally {
       setSavingToggle(false);
@@ -176,21 +142,11 @@ export default function Chatbot() {
   // SAVE SETTINGS
   // =====================
   const handleSave = async () => {
-    const token = localStorage.getItem("token");
-    const headers = {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-    };
-
     try {
-      await fetch("http://localhost:8080/api/chatbot/admin/settings", {
-        method: "POST",
-        headers,
-        body: JSON.stringify(settings),
-      });
+      await api.post("/chatbot/admin/settings", settings);
       alert("Đã lưu cấu hình chatbot!");
     } catch (err) {
-      alert("Lỗi khi lưu: " + err.message);
+      alert("Lỗi khi lưu: " + (err.response?.data?.message || err.message));
     }
   };
 
@@ -219,28 +175,10 @@ export default function Chatbot() {
 
     setRebuilding(true);
     try {
-      const token = localStorage.getItem("token");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-      const res = await fetch("http://localhost:8080/api/admin/ai/rebuild", {
-        method: "POST",
-        headers,
-      });
-      const text = await res.text();
-      let data = null;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch {
-        data = null;
-      }
-
-      if (!res.ok) {
-        throw new Error(data?.message || `Rebuild AI thất bại (HTTP ${res.status})`);
-      }
-
-      alert(data?.message || "Đã kích hoạt rebuild AI!");
+      const res = await api.post("/admin/ai/rebuild");
+      alert(res.data?.message || "Đã kích hoạt rebuild AI!");
     } catch (err) {
-      alert("Lỗi khi rebuild AI: " + err.message);
+      alert("Lỗi khi rebuild AI: " + (err.response?.data?.message || err.message));
     } finally {
       setRebuilding(false);
     }
@@ -440,20 +378,6 @@ export default function Chatbot() {
                           {chat.status === "success" ? "Thành công" : "Thất bại"}
                         </span>
                       </div>
-                    </div>
-
-                    <div className="chat-bubble chat-log-question">
-                      <strong>❓ Câu hỏi:</strong>
-                      <p>{chat.question}</p>
-                    </div>
-
-                    <div className="chat-bubble chat-log-answer">
-                      <strong>🤖 Trả lời:</strong>
-                      {chat.answer ? (
-                        <p>{chat.answer}</p>
-                      ) : (
-                        <span className="chat-log-failed-text">Không thể phản hồi</span>
-                      )}
                     </div>
                   </div>
                 ))}

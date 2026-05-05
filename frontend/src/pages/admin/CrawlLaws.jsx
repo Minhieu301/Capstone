@@ -8,13 +8,15 @@ export default function AdminCrawlLaws() {
   const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState(process.env.REACT_APP_CRAWLER_DEFAULT_URL || "");
   const [result, setResult] = useState(null);
+  const [logIdCounter, setLogIdCounter] = useState(0);
 
   const addLog = (message, status = "info", timeOverride = null) => {
     const time = timeOverride || new Date().toLocaleString("vi-VN");
     setLogs((prev) => [
       ...prev,
-      { id: Date.now() + Math.random(), time, message, status },
+      { id: logIdCounter, time, message, status },
     ]);
+    setLogIdCounter((prev) => prev + 1);
   };
 
   const clearAll = () => {
