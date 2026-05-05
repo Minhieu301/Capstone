@@ -39,7 +39,7 @@ ILAS là hệ thống web full-stack gồm:
 
 ```bash
 git clone <repository-url>
-cd LSSW
+cd ILAS
 ```
 
 ---
@@ -57,7 +57,7 @@ backend/src/main/resources/application.properties
 ```
 
 ```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/lssw_db
+spring.datasource.url=jdbc:mysql://localhost:3306/ilas_db
 spring.datasource.username=YOUR_USER
 spring.datasource.password=YOUR_PASSWORD
 ```
@@ -138,7 +138,7 @@ python -m crawler.run_crawl
 ## 📁 Cấu trúc thư mục
 
 ```bash
-LSSW/
+ILAS/
 ├── backend/
 │   ├── src/
 │   │   ├── main/
