@@ -221,7 +221,7 @@ http://localhost:3000
 
 ### 🗄️ Database
 
-* MySQL / MariaDB
+* MySQL
 
 ---
 

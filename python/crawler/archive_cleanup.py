@@ -37,9 +37,8 @@ def archive_other_laws(cur, law_id):
 
 def archive_old_data(cur, law_id):
     """
-    Archive data phiên bản cũ của LUẬT HIỆN TẠI (soft).
-    Lưu ý: phần này đang archive theo status='active' (không phân biệt version).
-    Nếu bạn muốn archive theo version_number cụ thể, mình sẽ chỉnh theo schema của bạn.
+    Archive dữ liệu cũ của law_id trước khi insert bản mới.
+    Chỉ archive (đánh dấu) chứ không xóa cứng, để còn giữ log và feedback cũ.
     """
     cur.execute("""
         UPDATE articles SET status='archived'
